@@ -25,82 +25,79 @@ code written in python using that SDK to Go Language.
 
 Example:
 
- * Initialization:
+  - Initialization:
 
-        d, _ := db.NewDB(db.Options {
-                        DBNo              : db.ConfigDB,
-                        InitIndicator     : "CONFIG_DB_INITIALIZED",
-                        TableNameSeparator: "|",
-                        KeySeparator      : "|",
-                      })
+    d, _ := db.NewDB(db.Options {
+    DBNo              : db.ConfigDB,
+    InitIndicator     : "CONFIG_DB_INITIALIZED",
+    TableNameSeparator: "|",
+    KeySeparator      : "|",
+    })
 
- * Close:
+  - Close:
 
-        d.DeleteDB()
+    d.DeleteDB()
 
+  - No-Transaction SetEntry
 
- * No-Transaction SetEntry
+    tsa := db.TableSpec { Name: "ACL_TABLE" }
+    tsr := db.TableSpec { Name: "ACL_RULE" }
 
-        tsa := db.TableSpec { Name: "ACL_TABLE" }
-        tsr := db.TableSpec { Name: "ACL_RULE" }
+    ca := make([]string, 1, 1)
 
-        ca := make([]string, 1, 1)
+    ca[0] = "MyACL1_ACL_IPV4"
+    akey := db.Key { Comp: ca}
+    avalue := db.Value {map[string]string {"ports":"eth0","type":"mirror" }}
 
-        ca[0] = "MyACL1_ACL_IPV4"
-        akey := db.Key { Comp: ca}
-        avalue := db.Value {map[string]string {"ports":"eth0","type":"mirror" }}
+    d.SetEntry(&tsa, akey, avalue)
 
-        d.SetEntry(&tsa, akey, avalue)
+  - GetEntry
 
- * GetEntry
+    avalue, _ := d.GetEntry(&tsa, akey)
 
-        avalue, _ := d.GetEntry(&tsa, akey)
+  - GetKeys
 
- * GetKeys
+    keys, _ := d.GetKeys(&tsa);
 
-        keys, _ := d.GetKeys(&tsa);
+  - GetKeysPattern
 
- * GetKeysPattern
+    keys, _ := d.GetKeys(&tsa, akeyPattern);
 
-        keys, _ := d.GetKeys(&tsa, akeyPattern);
+  - No-Transaction DeleteEntry
 
- * No-Transaction DeleteEntry
+    d.DeleteEntry(&tsa, akey)
 
-        d.DeleteEntry(&tsa, akey)
+  - GetTable
 
- * GetTable
+    ta, _ := d.GetTable(&tsa)
 
-        ta, _ := d.GetTable(&tsa)
+  - No-Transaction DeleteTable
 
- * No-Transaction DeleteTable
+    d.DeleteTable(&ts)
 
-        d.DeleteTable(&ts)
+  - Transaction
 
- * Transaction
+    rkey := db.Key { Comp: []string { "MyACL2_ACL_IPV4", "RULE_1" }}
+    rvalue := db.Value { Field: map[string]string {
+    "priority" : "0",
+    "packet_action" : "eth1",
+    },
+    }
 
-        rkey := db.Key { Comp: []string { "MyACL2_ACL_IPV4", "RULE_1" }}
-        rvalue := db.Value { Field: map[string]string {
-                "priority" : "0",
-                "packet_action" : "eth1",
-                        },
-                }
+    d.StartTx([]db.WatchKeys { {Ts: &tsr, Key: &rkey} },
+    []*db.TableSpec { &tsa, &tsr })
 
-        d.StartTx([]db.WatchKeys { {Ts: &tsr, Key: &rkey} },
-                  []*db.TableSpec { &tsa, &tsr })
+    d.SetEntry( &tsa, akey, avalue)
+    d.SetEntry( &tsr, rkey, rvalue)
 
-        d.SetEntry( &tsa, akey, avalue)
-        d.SetEntry( &tsr, rkey, rvalue)
+    e := d.CommitTx()
 
-        e := d.CommitTx()
+  - Transaction Abort
 
- * Transaction Abort
-
-        d.StartTx([]db.WatchKeys {},
-                  []*db.TableSpec { &tsa, &tsr })
-        d.DeleteEntry( &tsa, rkey)
-        d.AbortTx()
-
-
+    d.StartTx([]db.WatchKeys {},
+    []*db.TableSpec { &tsa, &tsr })
+    d.DeleteEntry( &tsa, rkey)
+    d.AbortTx()
 */
 package db
 
@@ -113,9 +110,9 @@ import (
 	"strings"
 
 	"github.com/Azure/sonic-mgmt-common/cvl"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/go-redis/redis/v7"
 	"github.com/golang/glog"
-	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 )
 
 const (
@@ -156,7 +153,8 @@ type Options struct {
 	InitIndicator      string
 	TableNameSeparator string //Overriden by the DB config file's separator.
 	KeySeparator       string //Overriden by the DB config file's separator.
-	IsWriteDisabled    bool //Indicated if write is allowed
+	IsWriteDisabled    bool   //Indicated if write is allowed
+	IsEnableOnChange   bool   // whether OnChange cache enabled
 
 	DisableCVLCheck bool
 }
@@ -207,19 +205,9 @@ type TableSpec struct {
 	// can have TableSeparator as part of the key. Otherwise, we cannot
 	// tell where the key component begins.
 	CompCt int
-	// NoDelete flag (if it is set to true) is to skip the row entry deletion from 
+	// NoDelete flag (if it is set to true) is to skip the row entry deletion from
 	// the table when the "SetEntry" or "ModEntry" method is called with empty Value Field map.
 	NoDelete bool
-}
-
-// Key gives the key components.
-// (Eg: { Comp : [] string { "acl1", "rule1" } } ).
-type Key struct {
-	Comp []string
-}
-
-func (k Key) String() string {
-	return fmt.Sprintf("{ Comp: %v }", k.Comp)
 }
 
 func (v Value) String() string {
@@ -259,6 +247,10 @@ type Table struct {
 	db    *DB
 }
 
+type dbCache struct {
+	Tables map[string]Table
+}
+
 type _txOp int
 
 const (
@@ -285,6 +277,9 @@ type DB struct {
 	cv                *cvl.CVL
 	cvlEditConfigData []cvl.CVLEditConfigData
 
+	onCReg dbOnChangeReg // holds OnChange enabled table names
+	cache  dbCache       // holds OnChange cache
+
 	/*
 		sKeys []*SKey               // Subscribe Key array
 		sHandler HFunc              // Handler Function
@@ -299,7 +294,7 @@ func (d DB) String() string {
 		d.client, d.Opts, d.txState, d.txCmds)
 }
 
-func getDBInstName (dbNo DBNum) string {
+func getDBInstName(dbNo DBNum) string {
 	switch dbNo {
 	case ApplDB:
 		return "APPL_DB"
@@ -327,6 +322,7 @@ func getDBInstName (dbNo DBNum) string {
 func NewDB(opt Options) (*DB, error) {
 
 	var e error
+	var d DB
 
 	if glog.V(3) {
 		glog.Info("NewDB: Begin: opt: ", opt)
@@ -338,10 +334,10 @@ func NewDB(opt Options) (*DB, error) {
 		if isDbInstPresent(dbInstName) {
 			ipAddr = getDbTcpAddr(dbInstName)
 			dbId = getDbId(dbInstName)
-	        dbSepStr := getDbSeparator(dbInstName)
+			dbSepStr := getDbSeparator(dbInstName)
 			if len(dbSepStr) > 0 {
 				if len(opt.TableNameSeparator) > 0 && opt.TableNameSeparator != dbSepStr {
-					glog.Warning(fmt.Sprintf("TableNameSeparator '%v' in the Options is different from the" +
+					glog.Warning(fmt.Sprintf("TableNameSeparator '%v' in the Options is different from the"+
 						" one configured in the Db config. file for the Db name %v", opt.TableNameSeparator, dbInstName))
 				}
 				opt.KeySeparator = dbSepStr
@@ -355,8 +351,14 @@ func NewDB(opt Options) (*DB, error) {
 	} else {
 		glog.Error(fmt.Errorf("Invalid database number %d", dbId))
 	}
-	
-	d := DB{client: redis.NewClient(&redis.Options{
+
+	if opt.IsEnableOnChange && !opt.IsWriteDisabled {
+		glog.Errorf("NewDB: IsEnableOnChange cannot be set on write enabled DB")
+		e = tlerr.TranslibDBCannotOpen{}
+		goto NewDBExit
+	}
+
+	d = DB{client: redis.NewClient(&redis.Options{
 		Network: "tcp",
 		Addr:    ipAddr,
 		//Addr:     DefaultRedisRemoteTCPEP,
@@ -378,6 +380,10 @@ func NewDB(opt Options) (*DB, error) {
 		glog.Error("NewDB: Could not create redis client")
 		e = tlerr.TranslibDBCannotOpen{}
 		goto NewDBExit
+	}
+
+	if opt.IsEnableOnChange {
+		d.onCReg = dbOnChangeReg{CacheTables: make(map[string]bool)}
 	}
 
 	if opt.DBNo != ConfigDB {
@@ -421,6 +427,10 @@ func (d *DB) DeleteDB() error {
 	}
 
 	return d.client.Close()
+}
+
+func (d *DB) Name() string {
+	return (getDBInstName(d.Opts.DBNo))
 }
 
 func (d *DB) key2redis(ts *TableSpec, key Key) string {
@@ -467,31 +477,58 @@ func (d *DB) ts2redisUpdated(ts *TableSpec) string {
 
 // GetEntry retrieves an entry(row) from the table.
 func (d *DB) GetEntry(ts *TableSpec, key Key) (Value, error) {
+	if (d == nil) || (d.client == nil) {
+		return Value{}, tlerr.TranslibDBConnectionReset{}
+	}
+
+	return d.getEntry(ts, key, false)
+}
+
+func (d *DB) getEntry(ts *TableSpec, key Key, forceReadDB bool) (Value, error) {
 
 	if glog.V(3) {
 		glog.Info("GetEntry: Begin: ", "ts: ", ts, " key: ", key)
 	}
 
+	var cacheHit bool
 	var value Value
+	var e error
 
-	/*
-		m := make(map[string]string)
-		m["f0.0"] = "v0.0"
-		m["f0.1"] = "v0.1"
-		m["f0.2"] = "v0.2"
-		v := Value{Field: m}
-	*/
+	entry := d.key2redis(ts, key)
+	useCache := d.Opts.IsEnableOnChange && d.onCReg.isCacheTable(ts.Name)
 
-	v, e := d.client.HGetAll(d.key2redis(ts, key)).Result()
+	if !forceReadDB && useCache {
+		if table, ok := d.cache.Tables[ts.Name]; ok {
+			if value, ok = table.entry[entry]; ok {
+				value = value.Copy()
+				cacheHit = true
+			}
+		}
+	}
 
-	if len(v) != 0 {
-		value = Value{Field: v}
-	} else {
+	if !cacheHit {
+		value.Field, e = d.client.HGetAll(d.key2redis(ts, key)).Result()
+	}
+
+	if e != nil {
+		glog.V(1).Infof("GetEntry: %v: HGetAll(%q) error: %v", d.Name(), entry, e)
+		value = Value{}
+
+	} else if !value.IsPopulated() {
 		if glog.V(4) {
 			glog.Info("GetEntry: HGetAll(): empty map")
 		}
-		// e = errors.New("Entry does not exist")
 		e = tlerr.TranslibRedisClientEntryNotExist{Entry: d.key2redis(ts, key)}
+
+	} else if !cacheHit && useCache {
+		if _, ok := d.cache.Tables[ts.Name]; !ok {
+			d.cache.Tables[ts.Name] = Table{
+				ts:    ts,
+				entry: make(map[string]Value),
+				db:    d,
+			}
+		}
+		d.cache.Tables[ts.Name].entry[entry] = value.Copy()
 	}
 
 	if glog.V(3) {
@@ -503,7 +540,7 @@ func (d *DB) GetEntry(ts *TableSpec, key Key) (Value, error) {
 
 // GetKeys retrieves all entry/row keys.
 func (d *DB) GetKeys(ts *TableSpec) ([]Key, error) {
-	return d.GetKeysPattern(ts, Key{Comp: []string{"*"}});
+	return d.GetKeysPattern(ts, Key{Comp: []string{"*"}})
 }
 
 func (d *DB) GetKeysPattern(ts *TableSpec, pat Key) ([]Key, error) {
@@ -512,7 +549,7 @@ func (d *DB) GetKeysPattern(ts *TableSpec, pat Key) ([]Key, error) {
 		glog.Info("GetKeys: Begin: ", "ts: ", ts, "pat: ", pat)
 	}
 
-	redisKeys, e := d.client.Keys(d.key2redis(ts,pat)).Result()
+	redisKeys, e := d.client.Keys(d.key2redis(ts, pat)).Result()
 	if glog.V(4) {
 		glog.Info("GetKeys: redisKeys: ", redisKeys, " e: ", e)
 	}
@@ -868,7 +905,7 @@ func (d *DB) Publish(channel string, message interface{}) error {
 }
 
 func (d *DB) RunScript(script *redis.Script, keys []string, args ...interface{}) *redis.Cmd {
-    return script.Run(d.client, keys, args...)
+	return script.Run(d.client, keys, args...)
 }
 
 // DeleteEntry deletes an entry(row) in the table.
@@ -907,7 +944,7 @@ func (d *DB) ModEntry(ts *TableSpec, key Key, value Value) error {
 		} else {
 			glog.Info("ModEntry: Mapping to DeleteEntry()")
 			e = d.DeleteEntry(ts, key)
-		}		
+		}
 		goto ModEntryExit
 	}
 
@@ -1030,7 +1067,7 @@ func (d *DB) DeleteTable(ts *TableSpec) error {
 	// For each key in Keys
 	// 	Delete the entry
 	for i := 0; i < len(keys); i++ {
-    // Don't define/declare a nested scope ``e''
+		// Don't define/declare a nested scope ``e''
 		e = d.DeleteEntry(ts, keys[i])
 		if e != nil {
 			glog.Warning("DeleteTable: DeleteEntry: " + e.Error())
@@ -1080,19 +1117,15 @@ func (t *Table) GetEntry(key Key) (Value, error) {
 	return v, nil
 }
 
-//===== Functions for db.Key =====
-
-// Len returns number of components in the Key
-func (k *Key) Len() int {
-	return len(k.Comp)
-}
-
-// Get returns the key component at given index
-func (k *Key) Get(index int) string {
-	return k.Comp[index]
-}
-
 //===== Functions for db.Value =====
+
+func (v *Value) Copy() (rV Value) {
+	rV = Value{Field: make(map[string]string, len(v.Field))}
+	for k, v1 := range v.Field {
+		rV.Field[k] = v1
+	}
+	return
+}
 
 func (v *Value) IsPopulated() bool {
 	return len(v.Field) > 0

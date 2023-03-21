@@ -26,7 +26,6 @@ returns the English version, and are only meant for log files.
 For message strings that are returned to the users, the localization
 will happen at when the GNMI/REST client's locale is known.
 Hence, it cannot occur here.
-
 */
 package tlerr
 
@@ -93,6 +92,13 @@ func (e TranslibDBSubscribeFail) Error() string {
 	return p.Sprintf("Translib Redis Error: DB Subscribe Fail")
 }
 
+type TranslibDBConnectionReset struct {
+}
+
+func (e TranslibDBConnectionReset) Error() string {
+	return p.Sprintf("Translib Redis Error: DB Connection Reset")
+}
+
 type TranslibSyntaxValidationError struct {
 	StatusCode int   // status code
 	ErrorStr   error // error message
@@ -103,8 +109,8 @@ func (e TranslibSyntaxValidationError) Error() string {
 }
 
 type TranslibUnsupportedClientVersion struct {
-	ClientVersion string
-	ServerVersion string
+	ClientVersion     string
+	ServerVersion     string
 	ServerBaseVersion string
 }
 
@@ -113,9 +119,9 @@ func (e TranslibUnsupportedClientVersion) Error() string {
 }
 
 type TranslibXfmrRetError struct {
-     XlateFailDelReq bool
+	XlateFailDelReq bool
 }
 
 func (e TranslibXfmrRetError) Error() string {
-     return p.Sprintf("Translib transformer return %s", e.XlateFailDelReq)
+	return p.Sprintf("Translib transformer return %s", e.XlateFailDelReq)
 }

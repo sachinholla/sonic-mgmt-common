@@ -41,6 +41,8 @@ type SKey struct {
 	Ts  *TableSpec
 	Key *Key
 	SEMap map[SEvent]bool	// nil map indicates subscribe to all
+	Opaque interface{}     // opaque data set by the caller
+
 }
 
 type SEvent int

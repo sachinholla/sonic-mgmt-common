@@ -20,18 +20,19 @@ package translib
 
 import (
 	"errors"
-	"strings"
-	log "github.com/golang/glog"
-	"github.com/openconfig/ygot/ygot"
-	"github.com/openconfig/ygot/ytypes"
-	"github.com/openconfig/ygot/util"
 	"reflect"
+	"strings"
+	"sync"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Azure/sonic-mgmt-common/translib/transformer"
 	"github.com/Azure/sonic-mgmt-common/translib/utils"
-	"sync"
+	log "github.com/golang/glog"
+	"github.com/openconfig/ygot/util"
+	"github.com/openconfig/ygot/ygot"
+	"github.com/openconfig/ygot/ytypes"
 )
 
 var ()
@@ -129,59 +130,12 @@ func (app *CommonApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 	return err
 }
 
-func (app *CommonApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationOpts, *notificationInfo, error) {
-    var err error
-    var subscDt transformer.XfmrTranslateSubscribeInfo
-    var notifInfo notificationInfo
-    var notifOpts notificationOpts
-    txCache := new(sync.Map)
-    err = tlerr.NotSupportedError{Format: "Subscribe not supported", Path: path}
+func (app *CommonApp) translateSubscribe(req *translateSubRequest) (*translateSubResponse, error) {
+	return defaultSubscribeResponse(req.path)
+}
 
-    log.Info("tranlateSubscribe:path", path)
-    subscDt, err = transformer.XlateTranslateSubscribe(path, dbs, txCache)
-    if subscDt.PType == transformer.OnChange {
-        notifOpts.pType = OnChange
-    } else {
-        notifOpts.pType = Sample
-    }
-    notifOpts.mInterval = subscDt.MinInterval
-    notifOpts.isOnChangeSupported = subscDt.OnChange
-    if err != nil {
-        log.Infof("returning: notificationOpts - %v, nil, error - %v", notifOpts, err)
-        return &notifOpts, nil, err
-    }
-    if subscDt.DbDataMap == nil {
-        log.Infof("DB data is nil so returning: notificationOpts - %v, nil, error - %v", notifOpts, err)
-        return &notifOpts, nil, err
-    } else {
-        for dbNo, dbDt := range(subscDt.DbDataMap) {
-            if (len(dbDt) == 0) { //ideally all tables for a given uri should be from same DB
-                continue
-            }
-            log.Infof("Adding to notifInfo, Db Data - %v for DB No - %v", dbDt, dbNo)
-            notifInfo.dbno = dbNo
-            // in future there will be, multi-table in a DB, support from translib, for now its just single table
-            for tblNm, tblDt := range(dbDt) {
-                notifInfo.table = db.TableSpec{Name:tblNm}
-                if (len(tblDt) == 1) {
-                    for tblKy := range(tblDt) {
-                        notifInfo.key = asKey(tblKy)
-                        notifInfo.needCache = subscDt.NeedCache
-                    }
-                } else {
-                    if (len(tblDt) >  1) {
-                        log.Warningf("More than one DB key found for subscription path - %v", path)
-                    } else {
-                        log.Warningf("No DB key found for subscription path - %v", path)
-                    }
-                    return &notifOpts, nil, err
-                }
-
-            }
-        }
-    }
-    log.Infof("For path - %v, returning: notifOpts - %v, notifInfo - %v, error - nil", path, notifOpts, notifInfo)
-    return &notifOpts, &notifInfo, nil
+func (app *CommonApp) processSubscribe(req *processSubRequest) (processSubResponse, error) {
+	return processSubResponse{}, errors.New("Not supported")
 }
 
 func (app *CommonApp) translateAction(dbs [db.MaxDB]*db.DB) error {
@@ -242,10 +196,11 @@ func (app *CommonApp) processDelete(d *db.DB) (SetResponse, error) {
 	return resp, err
 }
 
-func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
+func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (GetResponse, error) {
     var err error
     var payload []byte
     var resPayload []byte
+	var valueTree *ygot.ValidatedGoStruct
     log.Info("processGet:path =", app.pathInfo.Path)
     txCache := new(sync.Map)
 
@@ -324,7 +279,8 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 			    }
 		    }
 		    if resYgot != nil {
-			    resPayload, err = generateGetResponsePayload(app.pathInfo.Path, resYgot.(*ocbinds.Device), app.ygotTarget)
+			    resPayload, valueTree, err = generateGetResponsePayload(
+					app.pathInfo.Path, resYgot.(*ocbinds.Device), app.ygotTarget, fmtType)
 			    if err != nil {
 				    log.Warning("generateGetResponsePayload() couldn't generate payload.")
 				    resPayload = payload
@@ -341,7 +297,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 	    }
     }
 
-    return GetResponse{Payload: resPayload}, err
+    return GetResponse{Payload: resPayload, ValueTree: valueTree}, err
 }
 
 func (app *CommonApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {

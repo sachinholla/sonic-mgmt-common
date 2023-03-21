@@ -17,6 +17,7 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
+//go:build !test
 // +build !test
 
 package translib
@@ -24,7 +25,6 @@ package translib
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -357,70 +357,120 @@ func clearAclDataFromDb() error {
 func Test_AclApp_Subscribe(t *testing.T) {
 	app := new(AclApp)
 
-	t.Run("top", testSubsError(app, "/"))
 	t.Run("unknown", testSubsError(app, "/some/unknown/path"))
-	t.Run("topacl", testSubsError(app, "/openconfig-acl:acl"))
-	t.Run("aclsets", testSubsError(app, "/openconfig-acl:acl/acl-sets"))
-	t.Run("aclset*", testSubsError(app, "/openconfig-acl:acl/acl-sets/acl-set"))
-	t.Run("aclset", testSubsError(app, "/openconfig-acl:acl/acl-sets/acl-set[name=X][type=ACL_IPV4]"))
+	t.Run("unknown", testSubsError(app, "/openconfig-acl:acl/xxx"))
+	//t.Run("unknown", testSubsError(app, "/openconfig-acl:acl/config/xxx"))
+	t.Run("unknown", testSubsError(app, "/openconfig-acl:acl/acl-sets/xxx"))
+
+	t.Run("topacl", testSubs(app, "/openconfig-acl:acl",
+		"4|ACL_TABLE|*", "4|ACL_RULE|*|RULE_*", "4|HARDWARE|ACCESS_LIST"))
+
+	t.Run("topconfig", testSubs(app, "/openconfig-acl:acl/config",
+		"4|HARDWARE|ACCESS_LIST"))
+
+	t.Run("topstate", testSubs(app, "/openconfig-acl:acl/state",
+		"4|HARDWARE|ACCESS_LIST"))
+
+	t.Run("aclsets", testSubs(app, "/openconfig-acl:acl/acl-sets",
+		"4|ACL_TABLE|*", "4|ACL_RULE|*|RULE_*"))
+
+	t.Run("aclset*", testSubs(app, "/openconfig-acl:acl/acl-sets/acl-set",
+		"4|ACL_TABLE|*", "4|ACL_RULE|*|RULE_*"))
+
+	t.Run("aclset", testSubs(app, "/openconfig-acl:acl/acl-sets/acl-set[name=X][type=ACL_IPV4]",
+		"4|ACL_TABLE|X", "4|ACL_RULE|X|RULE_*"))
 
 	t.Run("acl_config", testSubs(app,
 		"/openconfig-acl:acl/acl-sets/acl-set[name=X][type=ACL_IPV4]/config/description",
-		"ACL_TABLE", "X_ACL_IPV4", true))
+		"4|ACL_TABLE|X"))
 
 	t.Run("acl_state", testSubs(app,
 		"/openconfig-acl:acl/acl-sets/acl-set[name=X][type=ACL_IPV4]/state",
-		"ACL_TABLE", "X_ACL_IPV4", true))
+		"4|ACL_TABLE|X"))
 
 	t.Run("entries", testSubs(app,
 		"/openconfig-acl:acl/acl-sets/acl-set[name=X][type=ACL_IPV4]/acl-entries",
-		"ACL_RULE", "X_ACL_IPV4|*", false))
+		"4|ACL_RULE|X|RULE_*"))
 
 	t.Run("rule*", testSubs(app,
 		"/openconfig-acl:acl/acl-sets/acl-set[name=X][type=ACL_IPV4]/acl-entries/acl-entry",
-		"ACL_RULE", "X_ACL_IPV4|*", false))
+		"4|ACL_RULE|X|RULE_*"))
 
 	t.Run("rule", testSubs(app,
 		"/openconfig-acl:acl/acl-sets/acl-set[name=X][type=ACL_IPV4]/acl-entries/acl-entry[sequence-id=1]",
-		"ACL_RULE", "X_ACL_IPV4|RULE_1", false))
+		"4|ACL_RULE|X|RULE_1"))
 
 	t.Run("rule_state", testSubs(app,
 		"/openconfig-acl:acl/acl-sets/acl-set[name=X][type=ACL_IPV4]/acl-entries/acl-entry[sequence-id=100]/state",
-		"ACL_RULE", "X_ACL_IPV4|RULE_100", true))
+		"4|ACL_RULE|X|RULE_100"))
 
 	t.Run("rule_sip", testSubs(app,
 		"/openconfig-acl:acl/acl-sets/acl-set[name=X][type=ACL_IPV4]/acl-entries/acl-entry[sequence-id=200]/ipv4/config/source-address",
-		"ACL_RULE", "X_ACL_IPV4|RULE_200", true))
+		"4|ACL_RULE|X|RULE_200"))
 
 }
 
 // testSubs creates a test case which invokes translateSubscribe on an
 // app interafce and check returned notificationInfo matches given values.
-func testSubs(app appInterface, path, oTable, oKey string, oCache bool) func(*testing.T) {
+// DB key info should be form "<DBNUM>|<TABLE>|<KEYCOMP1>|<KEYCOMP2>|..."
+func testSubs(app appInterface, path string, expKeyInfo ...string) func(*testing.T) {
 	return func(t *testing.T) {
-		_, nt, err := app.translateSubscribe([db.MaxDB]*db.DB{}, path)
+		req := translateSubRequest{
+			ctxID: t.Name(),
+			path:  path,
+			dbs:   [db.MaxDB]*db.DB{},
+		}
+		ntfAppInfo, err := app.translateSubscribe(&req)
 		if err != nil {
 			t.Fatalf("Unexpected error processing '%s'; err=%v", path, err)
 		}
-		if nt == nil || nt.needCache != oCache || nt.table.Name != oTable ||
-			!reflect.DeepEqual(nt.key.Comp, strings.Split(oKey, "|")) {
-			t.Logf("translateSubscribe for path '%s'", path)
-			t.Logf("Expected table '%s', key '%v', cache %v", oTable, oKey, oCache)
-			if nt == nil {
-				t.Fatalf("Found nil")
+		appKeyInfos := make(map[string]bool)
+		for _, nai := range ntfAppInfo.ntfAppInfoTrgt {
+			appKeyInfos[getDbKeyInfo(nai)] = true
+		}
+		for _, nai := range ntfAppInfo.ntfAppInfoTrgtChlds {
+			appKeyInfos[getDbKeyInfo(nai)] = true
+		}
+
+		for _, exp := range expKeyInfo {
+			if appKeyInfos[exp] {
+				delete(appKeyInfos, exp)
 			} else {
-				t.Fatalf("Found table '%s', key '%s', cache %v",
-					nt.table.Name, strings.Join(nt.key.Comp, "|"), nt.needCache)
+				t.Errorf("App did not return keyInfo %s", getDispKeyInfo(exp))
 			}
 		}
+
+		for extra := range appKeyInfos {
+			t.Errorf("App returned extra keyInfo %s", getDispKeyInfo(extra))
+		}
 	}
+}
+
+func getDbKeyInfo(nai *notificationAppInfo) string {
+	if nai.isNonDB() {
+		return ""
+	}
+	return fmt.Sprintf("%d|%s|%s", nai.dbno, nai.table.Name, strings.Join(nai.key.Comp, "|"))
+}
+
+func getDispKeyInfo(kInfo string) string {
+	toks := strings.SplitN(kInfo, "|", 3)
+	if len(toks) != 3 {
+		return fmt.Sprintf("{unknown: %s}", kInfo)
+	}
+	return fmt.Sprintf("{db=%s, table=%s, key=\"%s\"}", toks[0], toks[1], toks[2])
 }
 
 // testSubsError creates a test case which invokes translateSubscribe on
 // an app interafce and expects it to return an error
 func testSubsError(app appInterface, path string) func(*testing.T) {
 	return func(t *testing.T) {
-		_, _, err := app.translateSubscribe([db.MaxDB]*db.DB{}, path)
+		req := translateSubRequest{
+			ctxID: t.Name(),
+			path:  path,
+			dbs:   [db.MaxDB]*db.DB{},
+		}
+		_, err := app.translateSubscribe(&req)
 		if err == nil {
 			t.Fatalf("Expected error for path '%s'", path)
 		}

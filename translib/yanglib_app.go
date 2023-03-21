@@ -110,8 +110,8 @@ func (app *yanglibApp) translateAction(dbs [db.MaxDB]*db.DB) error {
 	return errors.NotSupported("Unsupported")
 }
 
-func (app *yanglibApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationOpts, *notificationInfo, error) {
-	return nil, nil, errors.NotSupported("Unsupported")
+func (app *yanglibApp) translateSubscribe(req *translateSubRequest) (*translateSubResponse, error) {
+	return defaultSubscribeResponse(req.path)
 }
 
 func (app *yanglibApp) processCreate(d *db.DB) (SetResponse, error) {
@@ -134,7 +134,11 @@ func (app *yanglibApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, erro
 	return ActionResponse{}, errors.NotSupported("Unsupported")
 }
 
-func (app *yanglibApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
+func (app *yanglibApp) processSubscribe(req *processSubRequest) (processSubResponse, error) {
+	return processSubResponse{}, errors.NotSupported("Unsupported")
+}
+
+func (app *yanglibApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (GetResponse, error) {
 	glog.Infof("path = %s", app.pathInfo.Template)
 	glog.Infof("vars = %s", app.pathInfo.Vars)
 
@@ -156,8 +160,8 @@ func (app *yanglibApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error) {
 	}
 
 	if err == nil {
-		resp.Payload, err = generateGetResponsePayload(
-			app.pathInfo.Path, app.ygotRoot, app.ygotTarget)
+		resp.Payload, resp.ValueTree, err = generateGetResponsePayload(
+			app.pathInfo.Path, app.ygotRoot, app.ygotTarget, fmtType)
 	}
 
 	return resp, err

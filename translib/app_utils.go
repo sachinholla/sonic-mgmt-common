@@ -22,8 +22,10 @@ package translib
 import (
 	"reflect"
 	"strings"
+
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+	"github.com/Azure/sonic-mgmt-common/translib/path"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 
 	log "github.com/golang/glog"
@@ -67,16 +69,16 @@ func getYangPathFromYgotStruct(s ygot.GoStruct, yangPathPrefix string, appModule
 	return ""
 }
 
-func generateGetResponsePayload(targetUri string, deviceObj *ocbinds.Device, ygotTarget *interface{}) ([]byte, error) {
+func generateGetResponsePayload(targetUri string, deviceObj *ocbinds.Device, ygotTarget *interface{}, fmtType TranslibFmtType) ([]byte, *ygot.ValidatedGoStruct, error) {
 	var err error
 	var payload []byte
 
 	if len(targetUri) == 0 {
-		return payload, tlerr.InvalidArgs("GetResponse failed as target Uri is not valid")
+		return payload, nil, tlerr.InvalidArgs("GetResponse failed as target Uri is not valid")
 	}
 	path, err := ygot.StringToPath(targetUri, ygot.StructuredPath, ygot.StringSlicePath)
 	if err != nil {
-		return payload, tlerr.InvalidArgs("URI to path conversion failed: %v", err)
+		return payload, nil, tlerr.InvalidArgs("URI to path conversion failed: %v", err)
 	}
 
 	// Get current node (corresponds to ygotTarget) and its parent node
@@ -94,19 +96,19 @@ func generateGetResponsePayload(targetUri string, deviceObj *ocbinds.Device, ygo
 	}
 	parentNodeList, err := ytypes.GetNode(ygSchema.RootSchema(), deviceObj, parentPath)
 	if err != nil {
-		return payload, err
+		return payload, nil, err
 	}
 	if len(parentNodeList) == 0 {
-		return payload, tlerr.InvalidArgs("Invalid URI: %s", targetUri)
+		return payload, nil, tlerr.InvalidArgs("Invalid URI: %s", targetUri)
 	}
 	parentNode := parentNodeList[0].Data
 
 	currentNodeList, err := ytypes.GetNode(ygSchema.RootSchema(), deviceObj, path, &(ytypes.GetPartialKeyMatch{}))
 	if err != nil {
-		return payload, err
+		return payload, nil, err
 	}
 	if len(currentNodeList) == 0 {
-		return payload, tlerr.NotFound("Resource not found")
+		return payload, nil, tlerr.NotFound("Resource not found")
 	}
 	//currentNode := currentNodeList[0].Data
 	currentNodeYangName := currentNodeList[0].Schema.Name
@@ -137,9 +139,13 @@ func generateGetResponsePayload(targetUri string, deviceObj *ocbinds.Device, ygo
 		}
 	}
 
+	if fmtType == TRANSLIB_FMT_YGOT {
+		return nil, &parentCloneObj, nil
+	}
+
 	payload, err = dumpIetfJson(parentCloneObj, true)
 
-	return payload, err
+	return payload, nil, err
 }
 
 func getTargetNodeYangSchema(targetUri string, deviceObj *ocbinds.Device) (*yang.Entry, error) {
@@ -223,4 +229,18 @@ func asKey(parts ...string) db.Key {
 
 func createEmptyDbValue(fieldName string) db.Value {
 	return db.Value{Field: map[string]string{fieldName: ""}}
+}
+
+func defaultSubscribeResponse(reqPath string) (*translateSubResponse, error) {
+	p, err := path.New(reqPath)
+	if err != nil {
+		return nil, err
+	}
+	resp := new(translateSubResponse)
+	resp.ntfAppInfoTrgt = append(resp.ntfAppInfoTrgt, &notificationAppInfo{
+		path:                p,
+		dbno:                db.MaxDB, // non-DB
+		isOnChangeSupported: false,
+	})
+	return resp, nil
 }

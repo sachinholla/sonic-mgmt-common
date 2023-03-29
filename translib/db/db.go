@@ -522,6 +522,9 @@ func (d *DB) getEntry(ts *TableSpec, key Key, forceReadDB bool) (Value, error) {
 
 	} else if !cacheHit && useCache {
 		if _, ok := d.cache.Tables[ts.Name]; !ok {
+			if d.cache.Tables == nil {
+				d.cache.Tables = make(map[string]Table, d.onCReg.size())
+			}
 			d.cache.Tables[ts.Name] = Table{
 				ts:    ts,
 				entry: make(map[string]Value),

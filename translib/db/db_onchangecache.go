@@ -118,3 +118,7 @@ func init() {
 func (reg *dbOnChangeReg) isCacheTable(name string) bool {
 	return reg.CacheTables[name]
 }
+
+func (reg *dbOnChangeReg) size() int {
+	return len(reg.CacheTables)
+}

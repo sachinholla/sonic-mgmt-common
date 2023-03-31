@@ -25,7 +25,6 @@ import (
 
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
-	"github.com/Azure/sonic-mgmt-common/translib/path"
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 
 	log "github.com/golang/glog"
@@ -229,18 +228,4 @@ func asKey(parts ...string) db.Key {
 
 func createEmptyDbValue(fieldName string) db.Value {
 	return db.Value{Field: map[string]string{fieldName: ""}}
-}
-
-func defaultSubscribeResponse(reqPath string) (*translateSubResponse, error) {
-	p, err := path.New(reqPath)
-	if err != nil {
-		return nil, err
-	}
-	resp := new(translateSubResponse)
-	resp.ntfAppInfoTrgt = append(resp.ntfAppInfoTrgt, &notificationAppInfo{
-		path:                p,
-		dbno:                db.MaxDB, // non-DB
-		isOnChangeSupported: false,
-	})
-	return resp, nil
 }

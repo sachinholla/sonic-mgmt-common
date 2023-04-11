@@ -1374,48 +1374,6 @@ func extractLeafListInstFromUri(uri string) (string, error) {
 	return leafListInstVal, err
 }
 
-func processKeyValueXfmr(dbDataMap RedisDbMap) RedisDbMap {
-	/*function to apply value transformer on DbData, used only in subscription context*/
-	xfmrLogDebug("apply value-transformer to - %v", dbDataMap)
-
-	resultMap := make(RedisDbMap)
-
-	for dbNo, dbDt := range dbDataMap {
-		for tblNm, tblDt := range dbDt {
-			for tblKey := range tblDt {
-				dbKey := tblKey
-				// "*" means all keys in a table in translib subscription context, so no need to call valueXfmr
-				if dbKey != "*" {
-					if hasKeyValueXfmr(tblNm) {
-						retKey, err := dbKeyValueXfmrHandler(SUBSCRIBE, dbNo, tblNm, dbKey)
-						if err != nil {
-							log.Warningf("dbKeyValueXfmrHandler() couldn't do conversion for - dbNo:%v, Tbl:%v, Key:%v, - %v", dbNo, tblNm, dbKey, err)
-							dbKey = ""
-						} else {
-							dbKey = retKey
-						}
-					}
-				}
-				if dbKey == "" {
-					continue
-				}
-				if resultMap[dbNo] == nil {
-					resultMap[dbNo] = map[string]map[string]db.Value{tblNm: {dbKey: {}}}
-				} else {
-					if resultMap[dbNo][tblNm] == nil {
-						resultMap[dbNo][tblNm] = map[string]db.Value{dbKey: {}}
-					} else {
-						resultMap[dbNo][tblNm][dbKey] = db.Value{}
-					}
-				}
-
-			}
-		}
-	}
-	xfmrLogDebug("After applying value-transformer - %v", resultMap)
-	return resultMap
-}
-
 func formSonicXfmrInputRequest(dbNum db.DBNum, table string, key string, xpath string) SonicXfmrParams {
 	var inParams SonicXfmrParams
 	inParams.dbNum = dbNum

@@ -77,12 +77,14 @@ func (app *PlatformApp) translateAction(dbs [db.MaxDB]*db.DB) error {
     return err
 }
 
-func (app *PlatformApp) translateSubscribe(dbs [db.MaxDB]*db.DB, path string) (*notificationOpts, *notificationInfo, error) {
-
-    var err error
-    return nil, nil, err
-
+func (app *PlatformApp) translateSubscribe(req *translateSubRequest) (*translateSubResponse, error) {
+	return defaultSubscribeResponse(req.path)
 }
+
+func (app *PlatformApp) processSubscribe(req *processSubRequest) (processSubResponse, error) {
+	return processSubResponse{}, errors.New("Not supported")
+}
+
 func (app *PlatformApp) translateCreate(d *db.DB) ([]db.WatchKeys, error)  {
     var err error
     var keys []db.WatchKeys
@@ -152,7 +154,7 @@ func (app *PlatformApp) processDelete(d *db.DB) (SetResponse, error)  {
     return resp, err
 }
 
-func (app *PlatformApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error)  {
+func (app *PlatformApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (GetResponse, error)  {
     pathInfo := app.path
     log.Infof("Received GET for PlatformApp Template: %s ,path: %s, vars: %v",
     pathInfo.Template, pathInfo.Path, pathInfo.Vars)
@@ -187,10 +189,13 @@ func (app *PlatformApp) processGet(dbs [db.MaxDB]*db.DB) (GetResponse, error)  {
         return GetResponse{Payload: payload}, perr
     }
 
+    var err error
     if isSubtreeRequest(targetUriPath, "/openconfig-platform:components") {
-        return app.doGetSysEeprom()
+        err = app.doGetSysEeprom()
     }
-    err := errors.New("Not supported component")
+    if err == nil {
+        return generateGetResponse(pathInfo.Path, app.ygotRoot, fmtType)
+    }
     return GetResponse{Payload: payload}, err
 }
 
@@ -423,11 +428,10 @@ func (app *PlatformApp) getSysEepromFromDb (eeprom *ocbinds.OpenconfigPlatform_C
     return nil 
 }
 
-func (app *PlatformApp) doGetSysEeprom () (GetResponse, error) {
+func (app *PlatformApp) doGetSysEeprom () error {
 
     log.Infof("Preparing collection for system eeprom");
 
-    var payload []byte
     var err error
     pf_cpts := app.getAppRootObject()
 
@@ -437,32 +441,22 @@ func (app *PlatformApp) doGetSysEeprom () (GetResponse, error) {
         pf_comp,_ := pf_cpts.NewComponent("System Eeprom")
         ygot.BuildEmptyTree(pf_comp)
         err = app.getSysEepromFromDb(pf_comp.State, true)
-        if err != nil {
-            return GetResponse{Payload: payload}, err
-        }
-        payload, err = dumpIetfJson((*app.ygotRoot).(*ocbinds.Device), true)
+
     case "/openconfig-platform:components/component":
         compName := app.path.Var("name")
         if compName == "" {
             pf_comp,_ := pf_cpts.NewComponent("System Eeprom")
             ygot.BuildEmptyTree(pf_comp)
             err = app.getSysEepromFromDb(pf_comp.State, true)
-            if err != nil {
-                return GetResponse{Payload: payload}, err
-            }
-            payload, err = dumpIetfJson(pf_cpts, false)
         } else {
             if compName != "System Eeprom" {
                 err = errors.New("Invalid component name")
+                break
             }
             pf_comp := pf_cpts.Component[compName]
             if pf_comp != nil {
                 ygot.BuildEmptyTree(pf_comp)
                 err = app.getSysEepromFromDb(pf_comp.State, true)
-                if err != nil {
-                    return GetResponse{Payload: payload}, err
-                }
-                payload, err = dumpIetfJson(pf_cpts.Component[compName], false)
             } else {
                 err = errors.New("Invalid input component name")
             }
@@ -474,10 +468,6 @@ func (app *PlatformApp) doGetSysEeprom () (GetResponse, error) {
             if pf_comp != nil {
                 ygot.BuildEmptyTree(pf_comp)
                 err = app.getSysEepromFromDb(pf_comp.State, true)
-                if err != nil {
-                    return GetResponse{Payload: payload}, err
-                }
-                payload, err = dumpIetfJson(pf_cpts.Component[compName], false)
             } else {
                 err = errors.New("Invalid input component name")
             }
@@ -495,10 +485,6 @@ func (app *PlatformApp) doGetSysEeprom () (GetResponse, error) {
                 if pf_comp != nil {
                     ygot.BuildEmptyTree(pf_comp)
                     err = app.getSysEepromFromDb(pf_comp.State, false)
-                    if err != nil {
-                        return GetResponse{Payload: payload}, err
-                    }
-                    payload, err = dumpIetfJson(pf_cpts.Component[compName].State, false)
                 } else {
                     err = errors.New("Invalid input component name")
                 }
@@ -507,6 +493,6 @@ func (app *PlatformApp) doGetSysEeprom () (GetResponse, error) {
             err = errors.New("Invalid Path")
         }
     }
-    return  GetResponse{Payload: payload}, err
+    return  err
 }
 

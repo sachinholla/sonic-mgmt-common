@@ -808,10 +808,10 @@ func (ne *notificationEvent) getValue(nInfo *notificationInfo, path string) (ygo
 	if err == nil {
 		if resp.ValueTree == nil {
 			err = tlerr.NotFound("app returned nil")
-		} else if isEmptyYgotStruct(*resp.ValueTree) {
-			err = tlerr.NotFound("app returned empty %T", *resp.ValueTree)
+		} else if isEmptyYgotStruct(resp.ValueTree) {
+			err = tlerr.NotFound("app returned empty %T", resp.ValueTree)
 		} else {
-			payload = *resp.ValueTree
+			payload = resp.ValueTree
 		}
 	}
 

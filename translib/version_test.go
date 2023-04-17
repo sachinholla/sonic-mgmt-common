@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	"github.com/Workiva/go-datastructures/queue"
 )
 
 func ver(major, minor, patch uint32) Version {
@@ -179,7 +180,13 @@ func vAction(v Version, expSuccess bool) func(*testing.T) {
 
 func vSubscribe(v Version, expSuccess bool) func(*testing.T) {
 	return func(t *testing.T) {
-		err := Subscribe(SubscribeRequest{Paths: []string{tPath}, ClientVersion: v})
+		req := SubscribeRequest{
+			Paths:         []string{tPath},
+			ClientVersion: v,
+			Q:             queue.NewPriorityQueue(10, true),
+			Stop:          make(chan struct{}),
+		}
+		err := Subscribe(req)
 		checkErr(t, ignoreNotImpl(err), expSuccess)
 	}
 }

@@ -200,7 +200,6 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) 
     var err error
     var payload []byte
     var resPayload []byte
-	var valueTree *ygot.ValidatedGoStruct
     log.Info("processGet:path =", app.pathInfo.Path)
     txCache := new(sync.Map)
 
@@ -279,12 +278,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) 
 			    }
 		    }
 		    if resYgot != nil {
-			    resPayload, valueTree, err = generateGetResponsePayload(
-					app.pathInfo.Path, resYgot.(*ocbinds.Device), app.ygotTarget, fmtType)
-			    if err != nil {
-				    log.Warning("generateGetResponsePayload() couldn't generate payload.")
-				    resPayload = payload
-			    }
+				return generateGetResponse(app.pathInfo.Path, &resYgot, fmtType)
 		    } else {
 			resPayload = payload
 		    }
@@ -297,7 +291,7 @@ func (app *CommonApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) 
 	    }
     }
 
-    return GetResponse{Payload: resPayload, ValueTree: valueTree}, err
+    return GetResponse{Payload: resPayload}, err
 }
 
 func (app *CommonApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {

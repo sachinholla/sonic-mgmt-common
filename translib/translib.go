@@ -104,7 +104,7 @@ type GetRequest struct {
 
 type GetResponse struct {
 	Payload   []byte
-	ValueTree *ygot.ValidatedGoStruct
+	ValueTree ygot.ValidatedGoStruct
 	ErrSrc    ErrSource
 }
 

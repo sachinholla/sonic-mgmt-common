@@ -340,12 +340,8 @@ func (app *IntfApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (G
 						return GetResponse{Payload: payload, ErrSrc: AppErr}, e
 					}
 
-					payload, err = dumpIetfJson(oc_val, false)
-					if err == nil {
-						return GetResponse{Payload: payload}, err
-					} else {
-						return GetResponse{Payload: payload, ErrSrc: AppErr}, err
-					}
+					ifInfo.State = oc_val
+					continue
 				}
 
 				/* Filling the counter Info to internal DS */
@@ -366,12 +362,8 @@ func (app *IntfApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (G
 						return GetResponse{Payload: payload, ErrSrc: AppErr}, e
 					}
 
-					payload, err = dumpIetfJson(counter_val, false)
-					if err == nil {
-						return GetResponse{Payload: payload}, err
-					} else {
-						return GetResponse{Payload: payload, ErrSrc: AppErr}, err
-					}
+					ifInfo.State = &ocbinds.OpenconfigInterfaces_Interfaces_Interface_State{Counters: counter_val}
+					continue
 				}
 
 				/* Filling Interface IP info to internal DS */
@@ -386,28 +378,9 @@ func (app *IntfApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (G
 					ygot.BuildEmptyTree(ifInfo.State)
 				}
 				app.convertInternalToOCIntfInfo(&ifKey, ifInfo)
-				if *app.ygotTarget == ifInfo {
-					payload, err = dumpIetfJson(intfObj, false)
-				} else {
-					dummyifInfo := &ocbinds.OpenconfigInterfaces_Interfaces_Interface{}
-					counter_all_val := &ocbinds.OpenconfigInterfaces_Interfaces_Interface_State{}
-					if *app.ygotTarget == ifInfo.Config {
-						dummyifInfo.Config = ifInfo.Config
-						payload, err = dumpIetfJson(dummyifInfo, false)
-					} else if *app.ygotTarget == ifInfo.State {
-						dummyifInfo.State = ifInfo.State
-						payload, err = dumpIetfJson(dummyifInfo, false)
-					} else if *app.ygotTarget == ifInfo.State.Counters {
-						counter_all_val.Counters = ifInfo.State.Counters
-						payload, err = dumpIetfJson(counter_all_val, false)
-					} else {
-						log.Info("Not supported get type!")
-						err = errors.New("Requested get-type not supported!")
-					}
-				}
 			}
 		}
-		return GetResponse{Payload: payload}, err
+		goto generate_response
 	}
 
 	/* Get all Interfaces */
@@ -443,13 +416,11 @@ func (app *IntfApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (G
 			ygot.BuildEmptyTree(ifInfo)
 			app.convertInternalToOCIntfInfo(&ifKey, ifInfo)
 		}
-		if *app.ygotTarget == intfObj {
-			payload, err = dumpIetfJson((*app.ygotRoot).(*ocbinds.Device), true)
-		} else {
-			log.Error("Wrong request!")
-		}
+		goto generate_response
 	}
-	return GetResponse{Payload: payload}, err
+
+generate_response:
+	return generateGetResponse(pathInfo.Path, app.ygotRoot, fmtType)
 }
 
 func (app *IntfApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {

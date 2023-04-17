@@ -228,14 +228,7 @@ func (app *AclApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (Ge
 		return GetResponse{Payload: payload, ErrSrc: AppErr}, err
 	}
 
-	var valueTree *ygot.ValidatedGoStruct
-	payload, valueTree, err = generateGetResponsePayload(
-		app.pathInfo.Path, (*app.ygotRoot).(*ocbinds.Device), app.ygotTarget, fmtType)
-	if err != nil {
-		return GetResponse{Payload: payload, ErrSrc: AppErr}, err
-	}
-
-	return GetResponse{Payload: payload, ValueTree: valueTree}, err
+	return generateGetResponse(app.pathInfo.Path, app.ygotRoot, fmtType)
 }
 
 func (app *AclApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {

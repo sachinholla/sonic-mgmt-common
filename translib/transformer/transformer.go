@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
 //  Copyright 2019 Dell, Inc.                                                 //
 //                                                                            //
@@ -112,7 +112,7 @@ func loadYangModules(files ...string) error {
 		yang.AddPath(expanded...)
 	}
 
-	ygSchema, err := ocbinds.GetSchema()
+	ygSchema, err := ocbinds.Schema()
 	if err != nil {
 		panic("Error in getting the schema: " + err.Error())
 	}

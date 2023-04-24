@@ -63,7 +63,7 @@ func (sc *subscribeContext) translateSubscribe(reqPath string, mode Notification
 		sid, reqPath, mode, recurseSubpaths)
 
 	resp, err := (*app).translateSubscribe(
-		&translateSubRequest{
+		translateSubRequest{
 			ctxID:   sid,
 			path:    reqPath,
 			mode:    mode,
@@ -76,7 +76,7 @@ func (sc *subscribeContext) translateSubscribe(reqPath string, mode Notification
 		return nil, err
 	}
 
-	if resp == nil || len(resp.ntfAppInfoTrgt) == 0 {
+	if len(resp.ntfAppInfoTrgt) == 0 {
 		glog.Warningf("[%v] %T.translateSubscribe returned nil/empty response for path: %s", sid, *app, reqPath)
 		var pType string
 		if path.StrHasWildcardKey(reqPath) {
@@ -98,7 +98,7 @@ func (sc *subscribeContext) translateSubscribe(reqPath string, mode Notification
 		path:     reqPath,
 		appInfo:  appInfo,
 		sContext: sc,
-		response: resp,
+		response: &resp,
 	}, nil
 }
 

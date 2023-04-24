@@ -57,14 +57,15 @@ type yangMapTree struct {
 	subtree map[string]*yangMapTree
 }
 
-func (nb *notificationInfoBuilder) Build() (*translateSubResponse, error) {
+func (nb *notificationInfoBuilder) Build() (translateSubResponse, error) {
 	log.Infof("translateSubscribe( %s )", nb.pathInfo.Path)
 
 	var err error
 	nb.requestPath, err = ygot.StringToStructuredPath(nb.pathInfo.Path)
 	if err != nil {
-		log.Warningf("Invalid subscribe path: \"%s\"; err=%v", nb.pathInfo.Path, err)
-		return nil, tlerr.InvalidArgs("Invalid subscribe path")
+		log.Warningf("Error parsing path \"%s\"; err=%v", nb.pathInfo.Path, err)
+		return translateSubResponse{},
+			tlerr.InvalidArgs("invalid subscribe path: %s", nb.pathInfo.Path)
 	}
 
 	// Find matching yangMapTree node
@@ -72,20 +73,21 @@ func (nb *notificationInfoBuilder) Build() (*translateSubResponse, error) {
 
 	log.Infof("Path match index %d", index)
 	if index < 0 {
-		return nil, tlerr.InvalidArgsError{Path: nb.pathInfo.Path, Format: "Invalid path"}
+		return translateSubResponse{},
+			tlerr.InvalidArgs("unknown path: %s", nb.pathInfo.Path)
 	}
 
 	nb.currentIndx = index
 	nb.currentPath = nb.requestPath
 	if err := ymap.collect(nb, recurse); err != nil {
 		log.Warningf("translateSubscribe failed for path: \"%s\"; err=%s", nb.pathInfo.Path, err)
-		return nil, tlerr.New("Internal error")
+		return translateSubResponse{}, tlerr.New("Internal error")
 	}
 
 	log.Infof("Found %d primary and %d subtree notificationAppInfo",
 		len(nb.primaryInfos), len(nb.subtreeInfos))
 
-	return &translateSubResponse{
+	return translateSubResponse{
 		ntfAppInfoTrgt:      nb.primaryInfos,
 		ntfAppInfoTrgtChlds: nb.subtreeInfos,
 	}, nil
@@ -316,16 +318,19 @@ func wildcardMatch(v1, v2 string) bool {
 	return v1 == v2 || v1 == "*"
 }
 
-func defaultSubscribeResponse(reqPath string) (*translateSubResponse, error) {
-	p, err := path.New(reqPath)
+// emptySubscribeResponse returns a translateSubResponse containing a non-db mapping
+// for the given path
+func emptySubscribeResponse(reqPath string) (translateSubResponse, error) {
+	p, err := ygot.StringToStructuredPath(reqPath)
 	if err != nil {
-		return nil, err
+		return translateSubResponse{}, err
 	}
-	resp := new(translateSubResponse)
-	resp.ntfAppInfoTrgt = append(resp.ntfAppInfoTrgt, &notificationAppInfo{
+	appInfo := &notificationAppInfo{
 		path:                p,
 		dbno:                db.MaxDB, // non-DB
 		isOnChangeSupported: false,
-	})
-	return resp, nil
+	}
+	return translateSubResponse{
+		ntfAppInfoTrgt: []*notificationAppInfo{appInfo},
+	}, nil
 }

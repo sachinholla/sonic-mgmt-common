@@ -134,7 +134,7 @@ func (app *CommonApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 	return err
 }
 
-func (app *CommonApp) translateSubscribe(req *translateSubRequest) (*translateSubResponse, error) {
+func (app *CommonApp) translateSubscribe(req translateSubRequest) (translateSubResponse, error) {
 	txCache := new(sync.Map)
 	reqIdLogStr := "subReq Id:[" + fmt.Sprintf("%v", req.ctxID) + "] : "
 	log.Info(reqIdLogStr, "tranlateSubscribe:path", req.path)
@@ -143,13 +143,13 @@ func (app *CommonApp) translateSubscribe(req *translateSubRequest) (*translateSu
 		if log.V(4) {
 			log.Warning(reqIdLogStr, "tranlateSubscribe:Error in initializing the SubscribeReqXlator for the subscribe path request: ", req.path)
 		}
-		return nil, err
+		return translateSubResponse{}, err
 	} else {
 		if err = subReqXlator.Translate(!req.recurse); err != nil {
 			if log.V(4) {
 				log.Warning(reqIdLogStr, "translateSubscribe: Error in processing the subscribe path request: ", req.path)
 			}
-			return nil, err
+			return translateSubResponse{}, err
 		} else {
 			subsReqXlateInfo := subReqXlator.GetSubscribeReqXlateInfo()
 
@@ -166,7 +166,8 @@ func (app *CommonApp) translateSubscribe(req *translateSubRequest) (*translateSu
 			if log.V(4) {
 				log.Info(reqIdLogStr, "translateSubscribe: subsReqXlateInfo.TrgtPathInfo: ", subsReqXlateInfo.TrgtPathInfo.DbKeyXlateInfo)
 			}
-			ntfSubsAppInfo := new(translateSubResponse)
+
+			var ntfSubsAppInfo translateSubResponse
 
 			for _, dbKeyInfo := range subsReqXlateInfo.TrgtPathInfo.DbKeyXlateInfo {
 				if log.V(4) {
@@ -515,7 +516,7 @@ func (app *CommonApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error
 	return resp, err
 }
 
-func (app *CommonApp) processSubscribe(param *processSubRequest) (processSubResponse, error) {
+func (app *CommonApp) processSubscribe(param processSubRequest) (processSubResponse, error) {
 	var resp processSubResponse
 
 	if subNotfRespXlator, err := transformer.GetSubscribeNotfRespXlator(param.ctxID, param.path, param.dbno, param.table, param.key, param.entry, param.dbs, param.opaque); err != nil {

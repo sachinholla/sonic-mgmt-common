@@ -27,6 +27,7 @@ import (
 
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	log "github.com/golang/glog"
 	"github.com/openconfig/ygot/ygot"
 )
@@ -137,12 +138,12 @@ func (app *lldpApp) translateAction(dbs [db.MaxDB]*db.DB) error {
     return err
 }
 
-func (app *lldpApp) translateSubscribe(req *translateSubRequest) (*translateSubResponse, error) {
-	return defaultSubscribeResponse(req.path)
+func (app *lldpApp) translateSubscribe(req translateSubRequest) (translateSubResponse, error) {
+	return emptySubscribeResponse(req.path)
 }
 
-func (app *lldpApp) processSubscribe(req *processSubRequest) (processSubResponse, error) {
-	return processSubResponse{}, errors.New("Not supported")
+func (app *lldpApp) processSubscribe(req processSubRequest) (processSubResponse, error) {
+	return processSubResponse{}, tlerr.New("not implemented")
 }
 
 func (app *lldpApp) processCreate(d *db.DB) (SetResponse, error)  {

@@ -160,6 +160,9 @@ type processSubResponse struct {
 }
 
 func (ni *notificationAppInfo) String() string {
+	if ni == nil {
+		return "<nil>"
+	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "{path='%s'", path.String(ni.path))
 	fmt.Fprintf(&b, ", db=%s, ts=%v, key=%v", ni.dbno, tableInfo(ni.table), keyInfo(ni.key))
@@ -181,7 +184,7 @@ func (ni *notificationAppInfo) String() string {
 	if ni.handlerFunc != nil {
 		fmt.Fprintf(&b, ", handlerFunc=%s", ni.handlerFunc)
 	}
-	fmt.Fprintf(&b, ", onchange=%v, preferred=%s, m_int=%d", ni.isOnChangeSupported, ni.pType, ni.mInterval)
+	fmt.Fprintf(&b, ", onchange=%v, preferred=%v, m_int=%d", ni.isOnChangeSupported, ni.pType, ni.mInterval)
 	fmt.Fprintf(&b, "}")
 	return b.String()
 }

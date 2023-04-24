@@ -28,7 +28,7 @@ import (
 
 	"github.com/Azure/sonic-mgmt-common/translib/db"
 	"github.com/Azure/sonic-mgmt-common/translib/ocbinds"
-	errors "github.com/Azure/sonic-mgmt-common/translib/tlerr"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/Azure/sonic-mgmt-common/translib/transformer"
 
 	"github.com/golang/glog"
@@ -88,19 +88,19 @@ func (app *yanglibApp) initialize(data appData) {
 }
 
 func (app *yanglibApp) translateCreate(d *db.DB) ([]db.WatchKeys, error) {
-	return nil, errors.NotSupported("Unsupported")
+	return nil, tlerr.NotSupported("Unsupported")
 }
 
 func (app *yanglibApp) translateUpdate(d *db.DB) ([]db.WatchKeys, error) {
-	return nil, errors.NotSupported("Unsupported")
+	return nil, tlerr.NotSupported("Unsupported")
 }
 
 func (app *yanglibApp) translateReplace(d *db.DB) ([]db.WatchKeys, error) {
-	return nil, errors.NotSupported("Unsupported")
+	return nil, tlerr.NotSupported("Unsupported")
 }
 
 func (app *yanglibApp) translateDelete(d *db.DB) ([]db.WatchKeys, error) {
-	return nil, errors.NotSupported("Unsupported")
+	return nil, tlerr.NotSupported("Unsupported")
 }
 
 func (app *yanglibApp) translateGet(dbs [db.MaxDB]*db.DB) error {
@@ -108,35 +108,35 @@ func (app *yanglibApp) translateGet(dbs [db.MaxDB]*db.DB) error {
 }
 
 func (app *yanglibApp) translateAction(dbs [db.MaxDB]*db.DB) error {
-	return errors.NotSupported("Unsupported")
+	return tlerr.NotSupported("Unsupported")
 }
 
-func (app *yanglibApp) translateSubscribe(req *translateSubRequest) (*translateSubResponse, error) {
-	return defaultSubscribeResponse(req.path)
+func (app *yanglibApp) translateSubscribe(req translateSubRequest) (translateSubResponse, error) {
+	return emptySubscribeResponse(req.path)
+}
+
+func (app *yanglibApp) processSubscribe(req processSubRequest) (processSubResponse, error) {
+	return processSubResponse{}, tlerr.New("not implemented")
 }
 
 func (app *yanglibApp) processCreate(d *db.DB) (SetResponse, error) {
-	return SetResponse{}, errors.NotSupported("Unsupported")
+	return SetResponse{}, tlerr.NotSupported("Unsupported")
 }
 
 func (app *yanglibApp) processUpdate(d *db.DB) (SetResponse, error) {
-	return SetResponse{}, errors.NotSupported("Unsupported")
+	return SetResponse{}, tlerr.NotSupported("Unsupported")
 }
 
 func (app *yanglibApp) processReplace(d *db.DB) (SetResponse, error) {
-	return SetResponse{}, errors.NotSupported("Unsupported")
+	return SetResponse{}, tlerr.NotSupported("Unsupported")
 }
 
 func (app *yanglibApp) processDelete(d *db.DB) (SetResponse, error) {
-	return SetResponse{}, errors.NotSupported("Unsupported")
+	return SetResponse{}, tlerr.NotSupported("Unsupported")
 }
 
 func (app *yanglibApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {
-	return ActionResponse{}, errors.NotSupported("Unsupported")
-}
-
-func (app *yanglibApp) processSubscribe(req *processSubRequest) (processSubResponse, error) {
-	return processSubResponse{}, errors.NotSupported("Unsupported")
+	return ActionResponse{}, tlerr.NotSupported("Unsupported")
 }
 
 func (app *yanglibApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (GetResponse, error) {
@@ -180,7 +180,7 @@ func (app *yanglibApp) copyOneModuleInfo(fromMods *ocbinds.IETFYangLibrary_Modul
 	from := fromMods.Module[key]
 	if from == nil {
 		glog.Errorf("No module %s in yanglib", key)
-		return errors.NotFound("Module %s@%s not found", key.Name, key.Revision)
+		return tlerr.NotFound("Module %s@%s not found", key.Name, key.Revision)
 	}
 
 	switch pt := app.pathInfo.Template; {
@@ -189,7 +189,7 @@ func (app *yanglibApp) copyOneModuleInfo(fromMods *ocbinds.IETFYangLibrary_Modul
 		if len(from.Deviation) != 0 {
 			to.Deviation = from.Deviation
 		} else {
-			return errors.NotFound("Module %s@%s has no deviations", key.Name, key.Revision)
+			return tlerr.NotFound("Module %s@%s has no deviations", key.Name, key.Revision)
 		}
 
 	case strings.Contains(pt, "/deviation{}{}"):
@@ -200,7 +200,7 @@ func (app *yanglibApp) copyOneModuleInfo(fromMods *ocbinds.IETFYangLibrary_Modul
 		if devmod := from.Deviation[devkey]; devmod != nil {
 			*to.Deviation[devkey] = *devmod
 		} else {
-			return errors.NotFound("Module %s@%s has no deviation %s@%s",
+			return tlerr.NotFound("Module %s@%s has no deviation %s@%s",
 				key.Name, key.Revision, devkey.Name, devkey.Revision)
 		}
 
@@ -209,7 +209,7 @@ func (app *yanglibApp) copyOneModuleInfo(fromMods *ocbinds.IETFYangLibrary_Modul
 		if len(from.Submodule) != 0 {
 			to.Submodule = from.Submodule
 		} else {
-			return errors.NotFound("Module %s@%s has no submodules", key.Name, key.Revision)
+			return tlerr.NotFound("Module %s@%s has no submodules", key.Name, key.Revision)
 		}
 
 	case strings.Contains(pt, "/submodule{}{}"):
@@ -220,7 +220,7 @@ func (app *yanglibApp) copyOneModuleInfo(fromMods *ocbinds.IETFYangLibrary_Modul
 		if submod := from.Submodule[subkey]; submod != nil {
 			*to.Submodule[subkey] = *submod
 		} else {
-			return errors.NotFound("Module %s@%s has no submodule %s@%s",
+			return tlerr.NotFound("Module %s@%s has no submodule %s@%s",
 				key.Name, key.Revision, subkey.Name, subkey.Revision)
 		}
 
@@ -321,7 +321,7 @@ func (yb *yanglibBuilder) loadYangs() error {
 		}
 		if err := mods.Read(f); err != nil {
 			glog.Errorf("Failed to parse %s; err=%v", f, err)
-			return errors.New("System error")
+			return tlerr.New("System error")
 		}
 		parsed++
 	}

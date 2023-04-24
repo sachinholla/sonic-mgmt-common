@@ -251,12 +251,12 @@ func (app *IntfApp) translateAction(dbs [db.MaxDB]*db.DB) error {
     return err
 }
 
-func (app *IntfApp) translateSubscribe(req *translateSubRequest) (*translateSubResponse, error) {
-	return defaultSubscribeResponse(req.path)
+func (app *IntfApp) translateSubscribe(req translateSubRequest) (translateSubResponse, error) {
+	return emptySubscribeResponse(req.path)
 }
 
-func (app *IntfApp) processSubscribe(req *processSubRequest) (processSubResponse, error) {
-	return processSubResponse{}, errors.New("Not supported")
+func (app *IntfApp) processSubscribe(req processSubRequest) (processSubResponse, error) {
+	return processSubResponse{}, tlerr.New("not implemented")
 }
 
 func (app *IntfApp) processCreate(d *db.DB) (SetResponse, error) {

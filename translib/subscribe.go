@@ -792,7 +792,7 @@ func (ne *notificationEvent) getValue(nInfo *notificationInfo, path string) (ygo
 	appInfo := nInfo.appInfo
 	dbs := ne.sInfo.dbs
 
-	err := appInitialize(&app, appInfo, path, nil, &appOptions{ctxt: ne.sInfo.ctx}, GET)
+	err := appInitialize(&app, appInfo, path, nil, &appOptions{}, GET)
 
 	if err != nil {
 		return payload, err
@@ -844,7 +844,7 @@ func (ne *notificationEvent) processSubscribe(nInfo *notificationInfo, subpath s
 		ne.id, in.dbno, tableInfo(in.table), keyInfo(in.key), subpath)
 
 	app := ne.getApp(nInfo)
-	out, err := app.processSubscribe(&in)
+	out, err := app.processSubscribe(in)
 	if err != nil {
 		log.Warningf("[%s] processSubscribe returned err: %v", ne.id, err)
 		return nil

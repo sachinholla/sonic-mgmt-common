@@ -21,7 +21,6 @@ package translib
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -129,49 +128,27 @@ func (app *AclApp) getAppRootObject() *ocbinds.OpenconfigAcl_Acl {
 }
 
 func (app *AclApp) translateCreate(d *db.DB) ([]db.WatchKeys, error) {
-	var err error
-	var keys []db.WatchKeys
-	log.Info("translateCreate:acl:path =", app.pathInfo.Template)
-
-	keys, err = app.translateCRUCommon(d, CREATE)
-	return keys, err
+	return app.translateCRUCommon(d, CREATE)
 }
 
 func (app *AclApp) translateUpdate(d *db.DB) ([]db.WatchKeys, error) {
-	var err error
-	var keys []db.WatchKeys
-	log.Info("translateUpdate:acl:path =", app.pathInfo.Template)
-
-	keys, err = app.translateCRUCommon(d, UPDATE)
-	return keys, err
+	return app.translateCRUCommon(d, UPDATE)
 }
 
 func (app *AclApp) translateReplace(d *db.DB) ([]db.WatchKeys, error) {
-	var err error
-	var keys []db.WatchKeys
-	log.Info("translateReplace:acl:path =", app.pathInfo.Template)
-
-	keys, err = app.translateCRUCommon(d, REPLACE)
-	return keys, err
+	return app.translateCRUCommon(d, REPLACE)
 }
 
 func (app *AclApp) translateDelete(d *db.DB) ([]db.WatchKeys, error) {
-	var err error
-	var keys []db.WatchKeys
-	log.Info("translateDelete:acl:path =", app.pathInfo.Template)
-
-	return keys, err
+	return nil, nil
 }
 
 func (app *AclApp) translateGet(dbs [db.MaxDB]*db.DB) error {
-	var err error
-	log.Info("translateGet:acl:path =", app.pathInfo.Template)
-	return err
+	return nil
 }
 
 func (app *AclApp) translateAction(dbs [db.MaxDB]*db.DB) error {
-	err := errors.New("Not supported")
-	return err
+	return tlerr.NotSupported("unsupported")
 }
 
 func (app *AclApp) processCreate(d *db.DB) (SetResponse, error) {
@@ -232,10 +209,7 @@ func (app *AclApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (Ge
 }
 
 func (app *AclApp) processAction(dbs [db.MaxDB]*db.DB) (ActionResponse, error) {
-	var resp ActionResponse
-	err := errors.New("Not implemented")
-
-	return resp, err
+	return ActionResponse{}, tlerr.New("not implemented")
 }
 
 func (app *AclApp) translateCRUCommon(d *db.DB, opcode int) ([]db.WatchKeys, error) {
@@ -1667,8 +1641,7 @@ func getAclKeyStrFromOCKey(aclname string, acltype ocbinds.E_OpenconfigAcl_ACL_T
 }
 
 /*
-	Check if targetUriPath is child (subtree) of nodePath
-
+Check if targetUriPath is child (subtree) of nodePath
 The return value can be used to decide if subtrees needs
 to visited to fill the data or not.
 */
@@ -1676,7 +1649,7 @@ func isSubtreeRequest(targetUriPath string, nodePath string) bool {
 	return strings.HasPrefix(targetUriPath, nodePath)
 }
 
-func (app *AclApp) translateSubscribe(req *translateSubRequest) (*translateSubResponse, error) {
+func (app *AclApp) translateSubscribe(req translateSubRequest) (translateSubResponse, error) {
 	ymap := yangMapTree{
 		subtree: map[string]*yangMapTree{
 			"acl-sets/acl-set": {
@@ -1767,7 +1740,7 @@ func (app *AclApp) translateSubscribeAclEntry(nb *notificationInfoBuilder) error
 	return nil
 }
 
-func (app *AclApp) processSubscribe(req *processSubRequest) (processSubResponse, error) {
+func (app *AclApp) processSubscribe(req processSubRequest) (processSubResponse, error) {
 	resp := processSubResponse{
 		path: req.path,
 	}

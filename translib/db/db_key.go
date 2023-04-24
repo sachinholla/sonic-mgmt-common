@@ -46,18 +46,18 @@ func (k Key) String() string {
 }
 
 // Len returns number of components in the Key
-func (k *Key) Len() int {
+func (k Key) Len() int {
 	return len(k.Comp)
 }
 
 // Get returns the key component at given index
-func (k *Key) Get(index int) string {
+func (k Key) Get(index int) string {
 	return k.Comp[index]
 }
 
 // IsPattern checks if the key has redis glob-style pattern.
 // Supports only '*' and '?' wildcards.
-func (k *Key) IsPattern() bool {
+func (k Key) IsPattern() bool {
 	for _, s := range k.Comp {
 		n := len(s)
 		for i := 0; i < n; i++ {
@@ -73,7 +73,7 @@ func (k *Key) IsPattern() bool {
 }
 
 // Equals checks if db key k equals to the other key.
-func (k *Key) Equals(other *Key) bool {
+func (k Key) Equals(other Key) bool {
 	if k.Len() != other.Len() {
 		return false
 	}
@@ -86,7 +86,7 @@ func (k *Key) Equals(other *Key) bool {
 }
 
 // Matches checks if db key k matches a key pattern.
-func (k *Key) Matches(pattern *Key) bool {
+func (k Key) Matches(pattern Key) bool {
 	if k.Len() != pattern.Len() {
 		return false
 	}
@@ -107,7 +107,7 @@ func (k *Key) Matches(pattern *Key) bool {
 // matches '/' against wildcard.
 // Supports '*' and '?' wildcards with '\' as the escape character.
 // '*' matches any char sequence or none; '?' matches exactly one char.
-// Charatcer classes are not supported (redis supports it).
+// Character classes are not supported (redis supports it).
 func patternMatch(value string, vIndex int, pattern string, pIndex int) bool {
 	for pIndex < len(pattern) {
 		switch pattern[pIndex] {

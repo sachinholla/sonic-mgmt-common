@@ -50,6 +50,7 @@ func TestIsPattern(t *testing.T) {
 
 func testPattern(comp ...string) func(*testing.T) {
 	return func(t *testing.T) {
+		t.Helper()
 		k := NewKey(comp...)
 		if !k.IsPattern() {
 			t.Fatalf("IsPattern() did not detect pattern in %v", k)
@@ -59,6 +60,7 @@ func testPattern(comp ...string) func(*testing.T) {
 
 func testNotPattern(comp ...string) func(*testing.T) {
 	return func(t *testing.T) {
+		t.Helper()
 		k := NewKey(comp...)
 		if k.IsPattern() {
 			t.Fatalf("IsPattern() wrongly detected pattern in %v", k)
@@ -77,7 +79,8 @@ func TestKeyEquals(t *testing.T) {
 
 func keyEq(k1, k2 *Key, exp bool) func(*testing.T) {
 	return func(t *testing.T) {
-		if k1.Equals(k2) != exp {
+		t.Helper()
+		if k1.Equals(*k2) != exp {
 			t.Fatalf("Equals() failed for k1=%v, k2=%v", k1, k2)
 		}
 	}
@@ -121,7 +124,8 @@ func TestKeyMatches(t *testing.T) {
 
 func keyMatch(k, p *Key, exp bool) func(*testing.T) {
 	return func(t *testing.T) {
-		if k.Matches(p) == exp {
+		t.Helper()
+		if k.Matches(*p) == exp {
 		} else if exp {
 			t.Fatalf("Key %v did not match pattern %v", k, p)
 		} else {

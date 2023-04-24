@@ -539,7 +539,7 @@ func (ne *notificationEvent) process() {
 
 	// Find all key patterns that match current key
 	for _, nInfos := range ne.nGrup.nInfos {
-		keyPattern := nInfos[0].key
+		keyPattern := *nInfos[0].key
 		if !ne.key.Matches(keyPattern) {
 			log.V(3).Infof("[%s] Key %v does not match pattern %v",
 				ne.id, ne.key.Comp, keyPattern.Comp)

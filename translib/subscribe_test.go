@@ -270,7 +270,7 @@ func (tv *translateSubscribeVerifier) compare(nInfo, expInfo *notificationAppInf
 	if tableInfo(nInfo.table) != tableInfo(expInfo.table) {
 		errors.Add("table mismatch; expected=%v, found=%v", tableInfo(expInfo.table), tableInfo(nInfo.table))
 	}
-	if expInfo.key != nil && (nInfo.key == nil || !expInfo.key.Equals(nInfo.key)) {
+	if expInfo.key != nil && (nInfo.key == nil || !expInfo.key.Equals(*nInfo.key)) {
 		errors.Add("key mismatch; expected=%v, found=%v", keyInfo(expInfo.key), keyInfo(nInfo.key))
 	}
 	if !listEquals(expInfo.keyGroupComps, nInfo.keyGroupComps) {

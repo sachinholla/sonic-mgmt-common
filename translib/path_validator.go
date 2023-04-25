@@ -137,6 +137,7 @@ func (pv *pathValidator) validatePath() error {
 	isAddWcKey := pv.hasAddWildcardKeyOption()
 	isIgnoreKey := pv.hasIgnoreKeyValidationOption()
 	prevModName := ""
+	modified := false
 
 	for idx, pathElem := range pv.gPath.Elem {
 		nodeName := pathElem.Name
@@ -171,6 +172,7 @@ func (pv *pathValidator) validatePath() error {
 			}
 		} else if isApnndModPrefix && (prevModName != ygModName || idx == 0) {
 			pv.gPath.Elem[idx].Name = ygModName + ":" + pathElem.Name
+			modified = true
 			if log.V(4) {
 				log.Info("validatePath: appeneded the module prefix name for the path node: ", pv.gPath.Elem[idx])
 			}
@@ -220,6 +222,7 @@ func (pv *pathValidator) validatePath() error {
 					pv.gPath.Elem[idx].Key = make(map[string]string)
 					for _, kn := range strings.Fields(ygSchema.Key) {
 						pv.gPath.Elem[idx].Key[kn] = "*"
+						modified = true
 					}
 					if log.V(4) {
 						log.Info("validatePath: added the key names and wild cards for the list node path: ", pv.gPath.Elem[idx])
@@ -230,6 +233,13 @@ func (pv *pathValidator) validatePath() error {
 		prevModName = ygModName
 		pv.parentSchema = ygSchema
 	}
+
+	// Some ygot APIs give preference to the deprecated p.Element slice over p.Elem.
+	// To ensure consistency, clear p.Element if we modified p.Elem values.
+	if modified && pv.gPath.GetElement() != nil {
+		pv.gPath.Element = nil
+	}
+
 	return nil
 }
 

@@ -339,7 +339,7 @@ func dbMapTableChildListDataFill(uri string, tableName string, dbEntry *yang.Ent
 }
 
 func dbMapTableChildContainerDataFill(uri string, tableName string, dbEntry *yang.Entry, jsonData interface{}, result map[string]map[string]db.Value) {
-	data := reflect.ValueOf(jsonData)
+	data := reflect.ValueOf(jsonData).Interface().(map[string]interface{})
 	keyName := dbEntry.Name
 	xfmrLogDebug("Container name %v will become table key.", keyName)
 	dbMapDataFill(uri, tableName, keyName, data, result)

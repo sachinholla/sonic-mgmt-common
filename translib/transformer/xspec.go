@@ -542,11 +542,16 @@ func dbMapFill(tableName string, curPath string, moduleNm string, xDbSpecMap map
 
 	var xDbSpecPath string
 	if entry.Name != moduleNm {
-		if entryType == YANG_CONTAINER {
-			tableName = entry.Name
+		dbXpath := ""
+		tableContainer := false
+		if tableName == "" && entryType == YANG_CONTAINER {
+			tableContainer = true
 		}
-		dbXpath := tableName
-		if entryType != YANG_CONTAINER {
+		if tableContainer {
+			tableName = entry.Name
+			dbXpath = tableName
+		} else {
+			// This includes all nodes which are not module or table containers
 			dbXpath = tableName + "/" + entry.Name
 		}
 		xDbSpecPath = dbXpath
@@ -556,7 +561,7 @@ func dbMapFill(tableName string, curPath string, moduleNm string, xDbSpecMap map
 		xDbSpecMap[dbXpath].dbEntry = entry
 		xDbSpecMap[dbXpath].module = moduleNm
 		xDbSpecMap[dbXpath].cascadeDel = XFMR_INVALID
-		if entryType == YANG_CONTAINER {
+		if tableContainer {
 			xDbSpecMap[dbXpath].dbIndex = db.ConfigDB
 			if entry.Exts != nil && len(entry.Exts) > 0 {
 				for _, ext := range entry.Exts {
@@ -988,7 +993,7 @@ func annotDbSpecMapFill(xDbSpecMap map[string]*dbInfo, dbXpath string, entry *ya
 					dbXpathData.cascadeDel = XFMR_DISABLE
 				}
 			case "key-transformer":
-				listName := pname[SONIC_LIST_INDEX]
+				listName := pname[SONIC_TBL_CHILD_INDEX]
 				listXpath := tableName + "/" + listName
 				if listXpathData, ok := xDbSpecMap[listXpath]; ok {
 					listXpathData.xfmrKey = ext.NName()

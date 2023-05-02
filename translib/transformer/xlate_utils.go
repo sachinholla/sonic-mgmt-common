@@ -1682,7 +1682,7 @@ func SonicUriHasSingletonContainer(uri string) bool {
 	}
 
 	pathList := splitUri(uri)
-	if len(pathList) > SONIC_TBL_CHILD_INDEX {
+	if len(pathList) >= SONIC_TBL_CHILD_INDEX {
 		tblChldXpath := pathList[SONIC_TABLE_INDEX] + "/" + pathList[SONIC_TBL_CHILD_INDEX]
 		if specTblChldInfo, ok := xDbSpecMap[tblChldXpath]; ok {
 			if specTblChldInfo.yangType == YANG_CONTAINER {

@@ -1058,7 +1058,7 @@ func verifyParentTableSonic(d *db.DB, dbs [db.MaxDB]*db.DB, oper Operation, uri 
 				return false, derr
 			}
 		}
-		if len(pathList) > SONIC_TBL_CHILD_INDEX && (oper == UPDATE || oper == CREATE || oper == DELETE || oper == GET) && !tableExists {
+		if len(pathList) == SONIC_TBL_CHILD_INDEX && (oper == UPDATE || oper == CREATE || oper == DELETE || oper == GET) && !tableExists {
 			// Uri is at /sonic-module:sonic-module/container-table/list
 			// PATCH opertion permitted only if table exists in DB.
 			// POST case since the URI is the parent, the parent needs to exist
@@ -1067,7 +1067,7 @@ func verifyParentTableSonic(d *db.DB, dbs [db.MaxDB]*db.DB, oper Operation, uri 
 			log.Warningf("Parent table %v with key %v does not exist for oper %v in DB", table, dbKey, oper)
 			err = tlerr.NotFound("Resource not found")
 			return false, err
-		} else if len(pathList) > SONIC_FIELD_INDEX && !tableExists {
+		} else if len(pathList) > SONIC_TBL_CHILD_INDEX && !tableExists {
 			// Uri is at /sonic-module/container-table/list/leaf
 			// Parent table should exist for all CRUD cases
 			log.Warningf("Parent table %v with key %v does not exist in DB", table, dbKey)

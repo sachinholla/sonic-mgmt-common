@@ -541,6 +541,10 @@ func dbMapFill(tableName string, curPath string, moduleNm string, xDbSpecMap map
 	entryType := getYangTypeIntId(entry)
 
 	var xDbSpecPath string
+	tblDbIndex := db.ConfigDB
+	var tblSpecInfo *dbInfo
+	tblOk := false
+
 	if entry.Name != moduleNm {
 		dbXpath := ""
 		tableContainer := false
@@ -553,16 +557,19 @@ func dbMapFill(tableName string, curPath string, moduleNm string, xDbSpecMap map
 		} else {
 			// This includes all nodes which are not module or table containers
 			dbXpath = tableName + "/" + entry.Name
+			if tblSpecInfo, tblOk = xDbSpecMap[tableName]; tblOk {
+				tblDbIndex = xDbSpecMap[tableName].dbIndex
+			}
 		}
 		xDbSpecPath = dbXpath
 		xDbSpecMap[dbXpath] = new(dbInfo)
-		xDbSpecMap[dbXpath].dbIndex = db.MaxDB
+		xDbSpecMap[dbXpath].dbIndex = tblDbIndex
 		xDbSpecMap[dbXpath].yangType = entryType
 		xDbSpecMap[dbXpath].dbEntry = entry
 		xDbSpecMap[dbXpath].module = moduleNm
 		xDbSpecMap[dbXpath].cascadeDel = XFMR_INVALID
 		if tableContainer {
-			xDbSpecMap[dbXpath].dbIndex = db.ConfigDB
+			xDbSpecMap[dbXpath].dbIndex = tblDbIndex
 			if entry.Exts != nil && len(entry.Exts) > 0 {
 				for _, ext := range entry.Exts {
 					dataTagArr := strings.Split(ext.Keyword, ":")
@@ -582,7 +589,7 @@ func dbMapFill(tableName string, curPath string, moduleNm string, xDbSpecMap map
 					}
 				}
 			}
-		} else if tblSpecInfo, ok := xDbSpecMap[tableName]; ok && (entryType == YANG_LIST && len(entry.Key) != 0) {
+		} else if tblOk && (entryType == YANG_LIST && len(entry.Key) != 0) {
 			tblSpecInfo.listName = append(tblSpecInfo.listName, entry.Name)
 			xDbSpecMap[dbXpath].keyList = append(xDbSpecMap[dbXpath].keyList, strings.Split(entry.Key, " ")...)
 		} else if entryType == YANG_LEAF || entryType == YANG_LEAF_LIST {
@@ -633,6 +640,7 @@ func dbMapFill(tableName string, curPath string, moduleNm string, xDbSpecMap map
 		xDbSpecMap[moduleXpath].yangType = entryType
 		xDbSpecMap[moduleXpath].module = moduleNm
 		xDbSpecMap[moduleXpath].cascadeDel = XFMR_INVALID
+		xDbSpecMap[moduleXpath].dbIndex = db.MaxDB
 		for {
 			done := true
 			sncTblInfo := new(sonicTblSeqnInfo)
@@ -965,8 +973,6 @@ func annotDbSpecMapFill(xDbSpecMap map[string]*dbInfo, dbXpath string, entry *ya
 					dbXpathData.keyName = new(string)
 				}
 				*dbXpathData.keyName = ext.NName()
-			case "db-name":
-				dbXpathData.dbIndex = db.GetdbNameToIndex(ext.NName())
 			case "value-transformer":
 				fieldName := pname[len(pname)-1]
 				fieldXpath := tableName + "/" + fieldName

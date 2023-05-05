@@ -366,9 +366,8 @@ func sonicDbToYangDataFill(inParamsForGet xlateFromDbParams) {
 						xfmrLogDebug("Yang entry not found for %v", curTable)
 						continue
 					}
-					// use table-name as xpath from now on
 					d := inParamsForGet.dbs[xDbSpecMap[curTable].dbIndex]
-					linParamsForGet := formXlateFromDbParams(d, inParamsForGet.dbs, xDbSpecMap[curTable].dbIndex, inParamsForGet.ygRoot, curUri, inParamsForGet.requestUri, curTable, inParamsForGet.oper, curTable, curKey, dbDataMap, inParamsForGet.txCache, curMap, inParamsForGet.validate)
+					linParamsForGet := formXlateFromDbParams(d, inParamsForGet.dbs, xDbSpecMap[curTable].dbIndex, inParamsForGet.ygRoot, curUri, inParamsForGet.requestUri, chldXpath, inParamsForGet.oper, curTable, curKey, dbDataMap, inParamsForGet.txCache, curMap, inParamsForGet.validate)
 					sonicDbToYangDataFill(linParamsForGet)
 					curMap = linParamsForGet.resultMap
 					dbDataMap = linParamsForGet.dbDataMap

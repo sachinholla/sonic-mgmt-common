@@ -118,7 +118,7 @@ module sonic-acl {
 				}
 
 				leaf IP_TYPE {
-					//mandatory true;
+					mandatory true;
 					type enumeration {
 						enum ANY;
 						enum IP;

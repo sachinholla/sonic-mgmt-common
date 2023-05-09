@@ -1216,6 +1216,7 @@ func convertOCToInternalIPv4(ruleData db.Value, aclName string, ruleIndex uint32
 	if rule.Ipv4.Config.DestinationAddress != nil {
 		ruleData.Field["DST_IP"] = *rule.Ipv4.Config.DestinationAddress
 	}
+	ruleData.Field["IP_TYPE"] = "IPV4ANY"
 }
 
 func convertOCToInternalIPv6(ruleData db.Value, aclName string, ruleIndex uint32, rule *ocbinds.OpenconfigAcl_Acl_AclSets_AclSet_AclEntries_AclEntry) {
@@ -1247,6 +1248,7 @@ func convertOCToInternalIPv6(ruleData db.Value, aclName string, ruleIndex uint32
 	if rule.Ipv6.Config.DestinationFlowLabel != nil {
 		ruleData.Field["DST_FLOWLABEL"] = strconv.FormatInt(int64(*rule.Ipv6.Config.DestinationFlowLabel), 10)
 	}
+	ruleData.Field["IP_TYPE"] = "IPV6ANY"
 }
 
 func convertOCToInternalTransport(ruleData db.Value, aclName string, ruleIndex uint32, rule *ocbinds.OpenconfigAcl_Acl_AclSets_AclSet_AclEntries_AclEntry) {

@@ -128,6 +128,14 @@ func (nb *notificationInfoBuilder) Key(keyComp ...string) *notificationInfoBuild
 	return nb
 }
 
+func (nb *notificationInfoBuilder) FieldScan(fieldPattern string) *notificationInfoBuilder {
+	nb.currentInfo.fieldScanPattern = fieldPattern
+	if nb.currentInfo.key == nil {
+		nb.currentInfo.key = new(db.Key) // non-nul key is required to mark it as a db mapping
+	}
+	return nb
+}
+
 func (nb *notificationInfoBuilder) Field(yangAttr, dbField string) *notificationInfoBuilder {
 	// Ignore unwanted fields
 	if len(nb.fieldFilter) != 0 {
@@ -165,6 +173,15 @@ func (nb *notificationInfoBuilder) Field(yangAttr, dbField string) *notification
 func (nb *notificationInfoBuilder) SetFieldPrefix(prefix string) bool {
 	i := nb.currentIndx + 1
 	n := path.Len(nb.currentPath)
+
+	// SetFieldPrefix("") indicates terminal container
+	if len(prefix) == 0 {
+		if i < n {
+			nb.fieldFilter = nb.currentPath.Elem[i].Name
+		}
+		nb.fieldPrefix = strings.Join(nb.subtreePath, "/")
+		return true
+	}
 
 	if len(nb.subtreePath) > 0 {
 		prefix = strings.Join(nb.subtreePath, "/") + "/" + prefix
@@ -208,7 +225,7 @@ func (nb *notificationInfoBuilder) OnChange(flag bool) *notificationInfoBuilder 
 	return nb
 }
 
-func (nb *notificationInfoBuilder) Interval(secs int) *notificationInfoBuilder {
+func (nb *notificationInfoBuilder) MinInterval(secs int) *notificationInfoBuilder {
 	nb.currentInfo.mInterval = secs
 	return nb
 }
@@ -277,8 +294,9 @@ func (y *yangMapTree) collect(nb *notificationInfoBuilder, recurse bool) error {
 		if err := y.mapFunc(nb); err != nil {
 			return err
 		}
-
-		nb.treeDepth++
+		if nb.currentInfo != nil {
+			nb.treeDepth++
+		}
 	}
 	if !recurse {
 		return nil

@@ -1662,6 +1662,9 @@ func (app *AclApp) translateSubscribe(req translateSubRequest) (translateSubResp
 					},
 				},
 			},
+			"interfaces": {
+				mapFunc: app.translateSubscribeAclBindings,
+			},
 		}}
 
 	nb := notificationInfoBuilder{
@@ -1739,6 +1742,11 @@ func (app *AclApp) translateSubscribeAclEntry(nb *notificationInfoBuilder) error
 		nb.Field("forwarding-action", "PACKET_ACTION")
 	}
 
+	return nil
+}
+
+func (app *AclApp) translateSubscribeAclBindings(nb *notificationInfoBuilder) error {
+	nb.New().OnChange(false).Preferred(Sample)
 	return nil
 }
 

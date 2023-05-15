@@ -20,19 +20,23 @@
 TOPDIR := ../..
 BUILD_DIR := $(TOPDIR)/build
 
-YANGDIR                     := .
+YANGDIR                     := $(BUILD_DIR)/yang
 YANGDIR_COMMON              := $(YANGDIR)/common
 YANGDIR_EXTENSIONS          := $(YANGDIR)/extensions
 YANGDIR_ANNOTATIONS         := $(YANGDIR)/annotations
-YANG_MOD_FILES              := $(wildcard *.yang)
-YANG_MOD_FILES              += $(wildcard $(YANGDIR_EXTENSIONS)/*.yang)
-YANG_COMMON_FILES           := $(wildcard $(YANGDIR_COMMON)/*.yang)
-YANG_ANNOTATION_FILES       := $(wildcard $(YANGDIR_ANNOTATIONS)/*.yang)
 
 YANGDIR_SONIC               := $(YANGDIR)/sonic
 YANGDIR_SONIC_COMMON        := $(YANGDIR_SONIC)/common
-SONIC_YANG_MOD_FILES        := $(wildcard $(YANGDIR_SONIC)/*.yang)
-SONIC_YANG_COMMON_FILES     := $(wildcard $(YANGDIR_SONIC_COMMON)/*.yang)
+
+include sonic/import.mk
+SONICYANG_IMPORT_DIR    ?= $(TOPDIR)/../sonic-yang-models/cvlyang-models
+SONIC_YANG_IMPORT_FILES  = $(addprefix $(SONICYANG_IMPORT_DIR)/, $(SONICYANG_IMPORTS))
+
+SYNC_STD_YANGS    := $(YANGDIR)/.sync_std_yangs
+SYNC_EXT_YANGS    := $(YANGDIR)/.sync_ext_yangs
+SYNC_SONIC_YANGS  := $(YANGDIR)/.sync_sonic_yangs
+SYNC_ANNOT_YANGS  := $(YANGDIR)/.sync_annot_yangs
+PREPARE_YANGS     := $(SYNC_STD_YANGS) $(SYNC_EXT_YANGS) $(SYNC_ANNOT_YANGS) $(SYNC_SONIC_YANGS)
 
 YANG_ANNOTS_CHK   := .annots_checked
 
@@ -54,51 +58,80 @@ all: $(ALL_TARGETS)
 .PHONY: annot
 annot: $(YANG_ANNOTS_CHK)
 
-$(YANG_ANNOTS_CHK): $(YANG_ANNOTATION_FILES) $(YANG_MOD_FILES) $(YANG_COMMON_FILES)
+$(YANG_ANNOTS_CHK): $(PREPARE_YANGS)
 	$(PYANG) --strict -f tree \
 		-p $(YANGDIR_COMMON):$(YANGDIR):$(YANGDIR_EXTENSIONS):$(YANGDIR_SONIC) \
-		$(YANG_ANNOTATION_FILES) > /dev/null
+		$(YANGDIR_ANNOTATIONS)/*.yang > /dev/null
 	touch $@
 
 #======================================================================
 # Yang tree for standard yangs and their extensions
 #======================================================================
 
-allyangs.tree:  $(YANG_MOD_FILES) $(YANG_COMMON_FILES)
+allyangs.tree: $(SYNC_STD_YANGS) $(SYNC_EXT_YANGS)
 	$(PYANG) \
 		-f tree \
 		-o $@ \
 		-p $(YANGDIR_COMMON):$(YANGDIR) \
-		$(YANG_MOD_FILES)
+		$(YANGDIR)/*.yang $$(find $(YANGDIR_EXTENSIONS) -name '*.yang')
 	@echo "+++++ Generation of  YANG tree for Yang modules completed +++++"
 
-allyangs_tree.html:  $(YANG_MOD_FILES) $(YANG_COMMON_FILES)
+allyangs_tree.html: $(SYNC_STD_YANGS) $(SYNC_EXT_YANGS)
 	$(PYANG) \
 		-f jstree \
 		-o $@ \
 		-p $(YANGDIR_COMMON):$(YANGDIR) \
-		$(YANG_MOD_FILES)
+		$(YANGDIR)/*.yang $$(find $(YANGDIR_EXTENSIONS) -name '*.yang')
 	@echo "+++++ Generation of  HTML tree for Yang modules completed +++++"
 
 #======================================================================
 # Yang tree for SONiC yangs
 #======================================================================
 
-sonic_allyangs.tree: $(SONIC_YANG_MOD_FILES) $(SONIC_YANG_COMMON_FILES)
+sonic_allyangs.tree: $(SYNC_SONIC_YANGS)
 	$(PYANG) \
 		-f tree \
 		-o $@ \
 		-p $(YANGDIR_SONIC_COMMON):$(YANGDIR_SONIC):$(YANGDIR_COMMON) \
-		$(SONIC_YANG_MOD_FILES)
+		$(YANGDIR_SONIC)/*.yang
 	@echo "+++++ Generation of  YANG tree for Sonic Yang modules completed +++++"
 
-sonic_allyangs_tree.html: $(SONIC_YANG_MOD_FILES) $(SONIC_YANG_COMMON_FILES)
+sonic_allyangs_tree.html: $(SYNC_SONIC_YANGS)
 	$(PYANG) \
 		-f jstree \
 		-o $@ \
 		-p $(YANGDIR_SONIC_COMMON):$(YANGDIR_SONIC):$(YANGDIR_COMMON) \
-		$(SONIC_YANG_MOD_FILES)
+		$(YANGDIR_SONIC)/*.yang
 	@echo "+++++ Generation of  HTML tree for Sonic Yang modules completed +++++"
+
+#======================================================================
+# Sync and patch yangs into build/yang directory
+#======================================================================
+
+.SECONDEXPANSION:
+
+.PRECIOUS: %/. 
+%/.:
+	mkdir -p $@
+
+$(SYNC_STD_YANGS): $(wildcard *.yang) $(wildcard common/*.yang) | $$(@D)/.
+	rsync -oavh --include='*/' --include='*.yang' --exclude='*' *.yang common $(@D)
+	touch $@
+
+$(SYNC_EXT_YANGS): $(wildcard extensions/*.yang) | $$(@D)/.
+	rsync -oavh --include='*/' --include='*.yang' --exclude='*' extensions $(@D)
+	touch $@
+
+$(SYNC_ANNOT_YANGS): $(wildcard annotations/*.yang) | $$(@D)/.
+	rsync -oavh --include='*/' --include='*.yang' --exclude='*' annotations $(@D)
+	touch $@
+
+$(SYNC_SONIC_YANGS): $(wildcard sonic/*.yang) $(SONIC_YANG_IMPORT_FILES) | $$(@D)/.
+	rsync -oavh --include='*/' --include='*.yang' --exclude='*' sonic $(@D)
+ifneq ($(SONIC_YANG_IMPORT_FILES),)
+	rsync -oavh $(SONIC_YANG_IMPORT_FILES) $(@D)/sonic
+endif
+	touch $@
 
 #======================================================================
 # Cleanups
@@ -106,4 +139,5 @@ sonic_allyangs_tree.html: $(SONIC_YANG_MOD_FILES) $(SONIC_YANG_COMMON_FILES)
 
 clean:
 	$(RM) $(ALL_TARGETS)
+	$(RM) -r $(YANGDIR)
 

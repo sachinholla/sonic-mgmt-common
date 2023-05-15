@@ -19,4 +19,4 @@
 
 package ocbinds
 
-//go:generate sh -c "$GO run -mod=vendor ../../vendor/github.com/openconfig/ygot/generator/generator.go -generate_fakeroot -output_file ocbinds.go -package_name ocbinds -generate_fakeroot -fakeroot_name=device -compress_paths=false -exclude_modules ietf-interfaces -path . $(find ../../models/yang -name '*.yang' -not -name '*annot.yang')"
+//go:generate sh -c "$GO run -mod=vendor ../../vendor/github.com/openconfig/ygot/generator/generator.go -generate_fakeroot -output_file ocbinds.go -package_name ocbinds -generate_fakeroot -fakeroot_name=device -compress_paths=false -exclude_modules ietf-interfaces -path . $(find ../../build/yang -name '*.yang' -not -name '*annot.yang')"

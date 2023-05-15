@@ -187,7 +187,11 @@ type translateSubscribeVerifier struct {
 	appError    error
 }
 
-func testTranslateSubscribe(t *testing.T, path string, mode NotificationType) *translateSubscribeVerifier {
+func testTranslateSubscribe(t *testing.T, path string) *translateSubscribeVerifier {
+	return testTranslateSubscribeForMode(t, path, OnChange)
+}
+
+func testTranslateSubscribeForMode(t *testing.T, path string, mode NotificationType) *translateSubscribeVerifier {
 	tv := &translateSubscribeVerifier{
 		t:    t,
 		path: path,
@@ -231,15 +235,18 @@ func (tv *translateSubscribeVerifier) VerifyCount(targetCount, childCount int) {
 
 // VerifyTarget checks if target notificationAppInfo list has a matching entry
 func (tv *translateSubscribeVerifier) VerifyTarget(path string, expInfo *notificationAppInfo) {
+	tv.t.Helper()
 	tv.findAndCompare("targetInfo", path, expInfo)
 }
 
 // VerifyChild checks if child notificationAppInfo list has a matching entry
 func (tv *translateSubscribeVerifier) VerifyChild(path string, nAppInfo *notificationAppInfo) {
+	tv.t.Helper()
 	tv.findAndCompare("childInfo", path, nAppInfo)
 }
 
 func (tv *translateSubscribeVerifier) findAndCompare(kind, path string, expInfo *notificationAppInfo) {
+	tv.t.Helper()
 	var paths []string
 	list := tv.targetInfos
 	if kind == "childInfo" {
@@ -263,6 +270,7 @@ func (tv *translateSubscribeVerifier) findAndCompare(kind, path string, expInfo 
 }
 
 func (tv *translateSubscribeVerifier) compare(nInfo, expInfo *notificationAppInfo) {
+	tv.t.Helper()
 	var errors Messages
 	if nInfo.dbno != expInfo.dbno {
 		errors.Add("dbno mismatch; expected=%v, found=%v", expInfo.dbno, nInfo.dbno)
@@ -282,9 +290,9 @@ func (tv *translateSubscribeVerifier) compare(nInfo, expInfo *notificationAppInf
 	if expInfo.handlerFunc.String() != nInfo.handlerFunc.String() {
 		errors.Add("handlerFunc mismatch; expected=%v, found=%v", expInfo.handlerFunc, nInfo.handlerFunc)
 	}
-	dbFields := nInfo.fieldsJSON()
-	expFields := expInfo.fieldsJSON()
-	if !reflect.DeepEqual(dbFields, expFields) {
+	dbFields := toFieldsJSON(nInfo)
+	expFields := toFieldsJSON(expInfo)
+	if expInfo.dbFldYgPathInfoList != nil && !reflect.DeepEqual(dbFields, expFields) {
 		val, _ := json.Marshal(dbFields)
 		exp, _ := json.Marshal(expFields)
 		errors.Add("dbFldYgPathInfoList mismatch;")
@@ -318,46 +326,30 @@ func listEquals(x, y interface{}) bool {
 	return reflect.DeepEqual(x, y)
 }
 
-///////////////////
-// notificationAppInfo customizations
-
 // subscribeFieldsJSON represents dbFldYgPathInfo objects in JSON format.
 // Syntax: {"prefix1": {"db_field1": "yang_field1", ...}, "prefix2": {...}}
 type subscribeFieldsJSON map[string]map[string]string
 
-// fieldsJSON returns ni.dbFldYgPathInfoList as a subscribeFieldsJSON object.
-func (ni *notificationAppInfo) fieldsJSON() subscribeFieldsJSON {
+// toFieldsJSON returns ni.dbFldYgPathInfoList as a subscribeFieldsJSON object.
+func toFieldsJSON(ni *notificationAppInfo) subscribeFieldsJSON {
 	jsonData := make(subscribeFieldsJSON)
-
 	for _, entry := range ni.dbFldYgPathInfoList {
 		if _, ok := jsonData[entry.rltvPath]; !ok {
-			jsonData[entry.rltvPath] = entry.dbFldYgPathMap
-		} else {
-			// to address the composite field names of the target leaf node notification
-			for k, v := range entry.dbFldYgPathMap {
-				jsonData[entry.rltvPath][k] = v
-			}
+			jsonData[entry.rltvPath] = make(map[string]string)
+		}
+		for k, v := range entry.dbFldYgPathMap {
+			jsonData[entry.rltvPath][k] = v
 		}
 	}
 	return jsonData
 }
 
-// setFields updates ni.dbFldYgPathInfoList from a JSON string
-// in subscribeFieldsJSON syntax.
-func (ni *notificationAppInfo) setFields(fieldsJSON string) {
-	ni.dbFldYgPathInfoList = parseFieldsJSON(fieldsJSON)
-}
-
-// setFields updates ni.dbFldYgPathInfoList from a JSON string
-// in subscribeFieldsJSON syntax.
-func (ni *notificationAppInfo) addFields(prefix string, fields map[string]string) {
-	ni.dbFldYgPathInfoList = append(ni.dbFldYgPathInfoList,
-		&dbFldYgPathInfo{rltvPath: prefix, dbFldYgPathMap: fields})
-}
-
 // parseFieldsJSON parses a JSON string in subscribeFieldsJSON syntax into
 // an array of dbFldYgPathInfo objects.
 func parseFieldsJSON(mappingJSON string) []*dbFldYgPathInfo {
+	if len(mappingJSON) == 0 {
+		return nil
+	}
 	jsonData := make(subscribeFieldsJSON)
 	err := json.Unmarshal([]byte(mappingJSON), &jsonData)
 	if err != nil {

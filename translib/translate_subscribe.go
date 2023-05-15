@@ -23,11 +23,11 @@ package translib
 // its response into notificationInfo.
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/Azure/sonic-mgmt-common/translib/internal/apis"
 	"github.com/Azure/sonic-mgmt-common/translib/path"
+	"github.com/Azure/sonic-mgmt-common/translib/tlerr"
 	"github.com/golang/glog"
 	"github.com/openconfig/gnmi/proto/gnmi"
 )
@@ -82,16 +82,22 @@ func (sc *subscribeContext) translateSubscribe(reqPath string, mode Notification
 		if path.StrHasWildcardKey(reqPath) {
 			pType = "wildcard "
 		}
-		return nil, fmt.Errorf("%spath not supported: %s", pType, reqPath)
+		return nil, tlerr.NotSupported("%spath not supported: %s", pType, reqPath)
 	}
 
 	glog.Infof("[%v] Path \"%s\" mapped to %d target and %d child notificationAppInfos",
 		sid, reqPath, len(resp.ntfAppInfoTrgt), len(resp.ntfAppInfoTrgtChlds))
 	for i, nAppInfo := range resp.ntfAppInfoTrgt {
 		glog.Infof("[%v] targetInfo[%d] = %v", sid, i, nAppInfo)
+		if err = sc.validateAppInfo(nAppInfo, mode); err != nil {
+			return nil, err
+		}
 	}
 	for i, nAppInfo := range resp.ntfAppInfoTrgtChlds {
 		glog.Infof("[%v] childInfo[%d] = %v", sid, i, nAppInfo)
+		if err = sc.validateAppInfo(nAppInfo, mode); err != nil {
+			return nil, err
+		}
 	}
 
 	return &translatedPathInfo{
@@ -100,6 +106,23 @@ func (sc *subscribeContext) translateSubscribe(reqPath string, mode Notification
 		sContext: sc,
 		response: &resp,
 	}, nil
+}
+
+func (sc *subscribeContext) validateAppInfo(nAppInfo *notificationAppInfo, mode NotificationType) error {
+	if nAppInfo == nil {
+		glog.Infof("[%v] app returned nil notificationAppInfo", sc.id)
+		return tlerr.New("internal error")
+	}
+	if nAppInfo.path == nil {
+		glog.Infof("[%v] app returned nil path", sc.id)
+		return tlerr.New("internal error")
+	}
+	if nAppInfo.isNonDB() && mode == OnChange {
+		p := path.String(nAppInfo.path)
+		glog.Infof("[%v] Path %s is a non-DB path", sc.id, p)
+		return tlerr.NotSupported("OnChange not supported: %s", p)
+	}
+	return nil
 }
 
 // getFromSession returns the translatedSubData for the path from the SubscribeSession.

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
-//  Copyright 2019 Broadcom. The term Broadcom refers to Broadcom Inc. and/or //
+//  Copyright 2021 Broadcom. The term Broadcom refers to Broadcom Inc. and/or //
 //  its subsidiaries.                                                         //
 //                                                                            //
 //  Licensed under the Apache License, Version 2.0 (the "License");           //
@@ -19,4 +19,16 @@
 
 package ocbinds
 
-//go:generate sh -c "$GO run -mod=vendor ../../vendor/github.com/openconfig/ygot/generator/generator.go -generate_fakeroot -output_file ocbinds.go -package_name ocbinds -generate_fakeroot -fakeroot_name=device -compress_paths=false -exclude_modules ietf-interfaces -path . $(find ../../build/yang -name '*.yang' -not -name '*annot.yang')"
+import (
+	"github.com/openconfig/ygot/ytypes"
+)
+
+// GetSchema is equivalent of the Schema function, but avoids
+// UnzipSchema call. Reuses the SchemaTree loaded during init.
+func GetSchema() (*ytypes.Schema, error) {
+	return &ytypes.Schema{
+		Root:       &Device{},
+		SchemaTree: SchemaTree,
+		Unmarshal:  Unmarshal,
+	}, nil
+}

@@ -48,7 +48,7 @@ ALL_TARGETS := allyangs.tree allyangs_tree.html
 ALL_TARGETS += sonic_allyangs.tree sonic_allyangs_tree.html
 ALL_TARGETS += #$(YANG_ANNOTS_CHK)
 
-all: $(ALL_TARGETS)
+all: $(PREPARE_YANGS) $(ALL_TARGETS)
 
 
 #======================================================================

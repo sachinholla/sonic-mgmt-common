@@ -155,7 +155,7 @@ def process(args):
     if not args.out_dir.exists():
         args.out_dir.mkdir(parents=True, exist_ok=True)
     yang_search_paths = ":".join([str(p.absolute()) for p in args.path])
-    repo = FileRepository(yang_search_paths, use_env=True)
+    repo = FileRepository(yang_search_paths, use_env=False)
     ctx = Context(repo)
     for entry in ctx.repository.modules:
         mod_name = entry[0]

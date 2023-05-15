@@ -27,13 +27,14 @@ CVL_SCHEMA_DIR = $(BUILD_DIR)/schema
 CVL_SCHEMA     = $(CVL_SCHEMA_DIR)/.done
 SONIC_YANG_DIR   = $(TOP_DIR)/build/yang/sonic
 SONIC_YANG_FILES = $(shell find $(SONIC_YANG_DIR) -name '*.yang')
+YANG_SRC_DIR     = ../models/yang
 
 CVL_TEST_DIR = $(TOP_DIR)/build/tests/cvl
 CVL_TEST_BIN = $(CVL_TEST_DIR)/cvl.test
 CVL_TEST_SCHEMA_DIR = $(CVL_TEST_DIR)/testdata/schema
 CVL_TEST_SCHEMA     = $(CVL_TEST_SCHEMA_DIR)/.done
 CVL_TEST_YANGS      = $(wildcard testdata/schema/*.yang)
-CVL_TEST_YANGS     += $(wildcard ../models/yang/sonic/common/*.yang)
+CVL_TEST_YANGS     += $(wildcard $(YANG_SRC_DIR)/sonic/common/*.yang)
 
 DEFAULT_TARGETS = $(CVL_SCHEMA)
 ifeq ($(NO_TEST_BINS),)
@@ -61,6 +62,7 @@ $(CVL_SCHEMA): $(SONIC_YANG_FILES) | $$(@D)/.
 	tools/generate_yin.py \
 		--no-err-prefix \
 		--path=$(SONIC_YANG_DIR) \
+		--path=$(YANG_SRC_DIR)/common \
 		--out-dir=$(@D)
 	touch $@
 
@@ -71,7 +73,8 @@ $(CVL_TEST_SCHEMA): $(CVL_TEST_YANGS) | $$(@D)/.
 	tools/generate_yin.py \
 		--no-err-prefix \
 		--path=testdata/schema \
-		--path=../models/yang/sonic/common \
+		--path=$(YANG_SRC_DIR)/common \
+		--path=$(YANG_SRC_DIR)/sonic/common \
 		--out-dir=$(@D)
 	touch $@
 

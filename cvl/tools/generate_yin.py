@@ -36,7 +36,7 @@ from pyang import syntax
 from pyang import statements
 from pyang import error
 
-new_line ='' #replace with '\n' for adding new line
+new_line = '' #replace with '\n' for adding new line
 indent_space = '' #replace with ' ' for indentation
 ns_indent_space = '' #replace with ' ' for indentation
 yin_namespace = "urn:ietf:params:xml:ns:yang:yin:1"
@@ -79,10 +79,11 @@ class ContainerToListPlugin():
         parent_stmt = stmt.parent
         list_name = parent_stmt.arg + "_LIST"
         old_xpath = statements.mk_path_str(stmt, with_prefixes=True, prefix_to_module=True)
-        print(f"====> {old_xpath}")
+        print(f"====> Transforming container {old_xpath} to list")
         old_container_path = statements.mk_path_str(stmt, with_prefixes=False)
 
         stmt.keyword = "list"
+        stmt.raw_keyword = "list"
         stmt.arg = list_name
 
         key_id = statements.Statement(stmt.top, stmt, stmt.pos, "leaf", "key_id")

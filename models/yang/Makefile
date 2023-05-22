@@ -129,7 +129,12 @@ $(SYNC_ANNOT_YANGS): $(wildcard annotations/*.yang) | $$(@D)/.
 $(SYNC_SONIC_YANGS): $(wildcard sonic/*.yang) $(SONIC_YANG_IMPORT_FILES) | $$(@D)/.
 	rsync -oavh --include='*/' --include='*.yang' --exclude='*' sonic $(@D)
 ifneq ($(SONIC_YANG_IMPORT_FILES),)
-	rsync -oavh $(SONIC_YANG_IMPORT_FILES) $(@D)/sonic
+	#rsync -oavh $(SONIC_YANG_IMPORT_FILES) $(@D)/sonic
+	$(TOPDIR)/tools/pyang/import_yang.py \
+		--from=$(SONICYANG_IMPORT_DIR) \
+		--to=$(@D)/sonic \
+		--subst-port-ref=name:ifname \
+		$(SONICYANG_IMPORTS)
 endif
 	touch $@
 

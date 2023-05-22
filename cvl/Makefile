@@ -41,8 +41,6 @@ ifeq ($(NO_TEST_BINS),)
 DEFAULT_TARGETS += $(CVL_TEST_BIN)
 endif
 
-default: $(DEFAULT_TARGETS)
-
 all: $(DEFAULT_TARGETS)
 
 .SECONDEXPANSION:
@@ -59,7 +57,7 @@ $(CVL_TEST_BIN): $(TEST_FILES) $(SRC_FILES) $(CVL_TEST_SCHEMA)
 schema: $(CVL_SCHEMA)
 
 $(CVL_SCHEMA): $(SONIC_YANG_FILES) | $$(@D)/.
-	tools/generate_yin.py \
+	$(TOP_DIR)/tools/pyang/generate_yin.py \
 		--no-err-prefix \
 		--path=$(SONIC_YANG_DIR) \
 		--path=$(YANG_SRC_DIR)/common \
@@ -70,7 +68,7 @@ $(CVL_SCHEMA): $(SONIC_YANG_FILES) | $$(@D)/.
 test-schema: $(CVL_TEST_SCHEMA)
 
 $(CVL_TEST_SCHEMA): $(CVL_TEST_YANGS) | $$(@D)/.
-	tools/generate_yin.py \
+	$(TOP_DIR)/tools/pyang/generate_yin.py \
 		--no-err-prefix \
 		--path=testdata/schema \
 		--path=$(YANG_SRC_DIR)/common \

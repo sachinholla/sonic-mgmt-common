@@ -26,10 +26,16 @@ TRANSFORMER_SRCS = $(filter ./transformer/%, $(shell find . -name '*.go' -not -n
 TRANSFORMER_TESTS := $(shell find . -name '*_test.go')
 TRANSFORMER_TEST_SRCS = $(filter ./transformer/%, $(TRANSFORMER_TESTS))
 
-YANG_FILES = $(shell find $(TOPDIR)/models/yang -name '*.yang')
+YANG_DIR   = ../build/yang
+YANG_FILES = $(shell find $(YANG_DIR) -name "*.yang" -not -path "*/annotations/*")
 YGOT_BINDS = ocbinds/ocbinds.go
 
-DEFAULT_TARGETS = $(YGOT_BINDS)
+SONIC_DEP_YANGS  = $(notdir $(wildcard $(YANG_DIR)/sonic/common/*.yang))
+YGOT_EXCLUDES    = ietf-interfaces sonic-types $(SONIC_DEP_YANGS)
+
+XFMR_MODELS_LIST = $(BUILD_DIR)/transformer/models_list
+
+DEFAULT_TARGETS = $(YGOT_BINDS) $(XFMR_MODELS_LIST)
 ifeq ($(NO_TEST_BINS),)
 DEFAULT_TARGETS += $(TRANSLIB_TEST_BIN) $(TRANSL_DB_TEST_BIN)
 ifdef INCLUDE_TEST_MODELS
@@ -37,12 +43,7 @@ DEFAULT_TARGETS += $(TRANSFORMER_TEST_BIN)
 endif
 endif
 
-default: $(DEFAULT_TARGETS)
-
-all: $(DEFAULT_TARGETS) $(TRANSLIB_PKG)
-
-$(TRANSLIB_PKG): $(TRANSLIB_MAIN_SRCS) $(YGOT_BINDS)
-	$(GO) build -mod=vendor -gcflags="all=-N -l" -v -o $@ ../translib
+all: $(DEFAULT_TARGETS)
 
 $(TRANSLIB_TEST_BIN): $(TRANSLIB_MAIN_SRCS) $(TRANSLIB_TEST_SRCS) $(YGOT_BINDS)
 	$(GO) test -mod=vendor -tags test -cover -coverpkg=../translib,../translib/tlerr -c ../translib -o $@
@@ -55,7 +56,25 @@ $(TRANSFORMER_TEST_BIN): $(TRANSFORMER_TEST_SRCS) $(TRANSFORMER_SRCS) $(TRANSLIB
 
 $(YGOT_BINDS): $(YANG_FILES)
 	$(RM) $@
-	cd ocbinds && $(GO) generate
+	$(GO) run \
+		--mod=vendor \
+		$(TOPDIR)/vendor/github.com/openconfig/ygot/generator/generator.go \
+		--logtostderr \
+		--output_file=$@ \
+		--package_name=ocbinds \
+		--generate_fakeroot \
+		--fakeroot_name=device \
+		--compress_paths=false \
+		--path=$(YANG_DIR) \
+		--exclude_modules=$(shell printf "%s," $(basename $(YGOT_EXCLUDES))) \
+		$^
+
+$(XFMR_MODELS_LIST): $(TOPDIR)/config/transformer/models_list $(YANG_FILES)
+	mkdir -p $(@D)
+	$(RM) $@ $(@D)/sonic_yang_excludes
+	printf -- "-%s\n" $(SONIC_DEP_YANGS) > $(@D)/sonic_yang_excludes
+	cat $< $(@D)/sonic_yang_excludes > $@
+
 
 clean:
 	$(RM) $(YGOT_BINDS)

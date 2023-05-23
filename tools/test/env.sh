@@ -56,7 +56,7 @@ pushd ${YANG_MODELS_PATH} > /dev/null
 rm -rf *
 find ${mgmt_cmn}/build/yang -name "*.yang" -exec ln -sf {} \;
 ln -sf ${mgmt_cmn}/models/yang/version.xml
-ln -sf ${mgmt_cmn}/config/transformer/models_list
+ln -sf ${mgmt_cmn}/build/transformer/models_list
 popd > /dev/null
 
 

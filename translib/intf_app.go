@@ -507,7 +507,8 @@ func (app *IntfApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (G
 				app.convertInternalToOCIntfInfo(&ifKey, ifInfo)
 			}
 		}
-		goto generate_response
+
+		return generateGetResponse(pathInfo.Path, app.ygotRoot, fmtType)
 	}
 
 	/* Get all Interfaces */
@@ -543,10 +544,8 @@ func (app *IntfApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType) (G
 			ygot.BuildEmptyTree(ifInfo)
 			app.convertInternalToOCIntfInfo(&ifKey, ifInfo)
 		}
-		goto generate_response
 	}
 
-generate_response:
 	return generateGetResponse(pathInfo.Path, app.ygotRoot, fmtType)
 }
 

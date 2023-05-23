@@ -71,7 +71,7 @@ func getYangPathFromYgotStruct(s ygot.GoStruct, yangPathPrefix string, appModule
 func generateGetResponse(targetUri string, root *ygot.GoStruct, fmtType TranslibFmtType) (GetResponse, error) {
 	var err error
 	var resp GetResponse
- 
+
 	if root == nil {
 		return resp, tlerr.InvalidArgs("ygotRoot not specified")
 	}
@@ -143,10 +143,10 @@ func generateGetResponse(targetUri string, root *ygot.GoStruct, fmtType Translib
 
 	if fmtType == TRANSLIB_FMT_YGOT {
 		resp.ValueTree = parentCloneObj
-		return resp , nil
+	} else {
+		resp.Payload, err = dumpIetfJson(parentCloneObj, true)
 	}
 
-	resp.Payload, err = dumpIetfJson(parentCloneObj, true)
 	return resp, err
 }
 

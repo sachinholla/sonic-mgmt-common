@@ -63,12 +63,12 @@ const (
 	AppErr
 )
 
+type TranslibFmtType int
+
 const (
-	TRANSLIB_FMT_IETF_JSON = iota
+	TRANSLIB_FMT_IETF_JSON TranslibFmtType = iota
 	TRANSLIB_FMT_YGOT
 )
-
-type TranslibFmtType int
 
 type UserRoles struct {
 	Name  string

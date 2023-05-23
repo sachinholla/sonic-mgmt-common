@@ -191,9 +191,13 @@ func (app *PlatformApp) processGet(dbs [db.MaxDB]*db.DB, fmtType TranslibFmtType
     }
 
     var err error
+
     if isSubtreeRequest(targetUriPath, "/openconfig-platform:components") {
         err = app.doGetSysEeprom()
+    } else {
+        err = errors.New("Not supported component")
     }
+
     if err == nil {
         return generateGetResponse(pathInfo.Path, app.ygotRoot, fmtType)
     }

@@ -33,14 +33,14 @@ from pyang.error import err_level, is_error, err_to_str
 
 def process(args):
     files = list()
-    if not args.from_dir.is_dir():
-        print(f"error: {args.from_dir} is not a directory")
+    for f in [f for f in args.from_dir if not f.is_dir()]:
+        print(f"error: {f} is not a directory")
         exit(1)
     for fname in args.files:
-        src = args.from_dir.joinpath(fname)
-        if not src.exists() or src.is_dir():
-            print(f"warning: source file {src} does not exists")
-            continue
+        src = get_file(fname, args.from_dir)
+        if src is None:
+            print(f"error: {fname} not found")
+            exit(1)
         files.append(src)
 
     if len(files) == 0:
@@ -62,11 +62,19 @@ def process(args):
         exit(1)
 
 
+def get_file(name, dirs) -> pathlib.Path:
+    for d in dirs:
+        f = d.joinpath(name)
+        if f.exists():
+            return f
+    return None
+
+
 class Preprocessor(object):
     def __init__(self, files, options):
         modules = {}
-        search_path = str(options.from_dir.absolute())
-        repo = FileRepository(search_path, use_env=True)
+        search_path = ":".join([str(f.absolute()) for f in options.from_dir])
+        repo = FileRepository(search_path, use_env=False)
         ctx = Context(repo)
         ctx.keep_comments = options.keep_comments
         for f in files:
@@ -180,7 +188,7 @@ def nameMap(s):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="Copy selected sonic yangs from FROM_DIR to TO_DIR")
-    ap.add_argument("--from", dest="from_dir", required=True, type=pathlib.Path,
+    ap.add_argument("--from", dest="from_dir", required=True, type=pathlib.Path, action="append",
                     help="Directory from where to copy the sonic yangs")
     ap.add_argument("--to", dest="to_dir", required=True, type=pathlib.Path,
                     help="Destination directory for the copied sonic yangs")

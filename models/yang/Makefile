@@ -29,8 +29,13 @@ YANGDIR_SONIC               := $(YANGDIR)/sonic
 YANGDIR_SONIC_COMMON        := $(YANGDIR_SONIC)/common
 
 include sonic/import.mk
-SONICYANG_IMPORT_DIR    ?= $(TOPDIR)/../sonic-yang-models/cvlyang-models
-SONIC_YANG_IMPORT_FILES  = $(addprefix $(SONICYANG_IMPORT_DIR)/, $(SONICYANG_IMPORTS))
+SONICYANG_IMPORT_DIR ?= $(or \
+	$(wildcard $(TOPDIR)/../sonic-yang-models/cvlyang-models), \
+	$(wildcard /usr/local/cvlyang-models) )
+
+$(info SONICYANG_IMPORT_DIR = $(SONICYANG_IMPORT_DIR))
+
+SONIC_YANG_IMPORT_FILES = $(addprefix $(SONICYANG_IMPORT_DIR)/, $(SONICYANG_IMPORTS))
 
 SYNC_STD_YANGS    := $(YANGDIR)/.sync_std_yangs
 SYNC_EXT_YANGS    := $(YANGDIR)/.sync_ext_yangs
@@ -132,6 +137,7 @@ ifneq ($(SONIC_YANG_IMPORT_FILES),)
 	#rsync -oavh $(SONIC_YANG_IMPORT_FILES) $(@D)/sonic
 	$(TOPDIR)/tools/pyang/import_yang.py \
 		--from=$(SONICYANG_IMPORT_DIR) \
+		--from=$(YANGDIR_COMMON) \
 		--to=$(@D)/sonic \
 		--subst-port-ref=name:ifname \
 		$(SONICYANG_IMPORTS)

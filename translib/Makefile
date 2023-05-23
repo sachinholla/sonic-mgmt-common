@@ -11,8 +11,6 @@ BUILD_DIR ?= $(TOPDIR)/build
 GO ?= go
 export GO
 
-TRANSLIB_PKG = $(BUILD_DIR)/pkg/linux_amd64/translib.a
-
 TRANSLIB_MAIN_SRCS = $(shell find . -name '*.go' | grep -v '_test.go' | grep -v '/test/')
 TRANSLIB_TEST_SRCS = $(shell find . -maxdepth 1 -name '*_test.go')
 TRANSL_DB_ALL_SRCS = $(shell find db/ -name '*.go' | grep -v '/test/')
@@ -33,7 +31,8 @@ YGOT_BINDS = ocbinds/ocbinds.go
 SONIC_DEP_YANGS  = $(notdir $(wildcard $(YANG_DIR)/sonic/common/*.yang))
 YGOT_EXCLUDES    = ietf-interfaces sonic-types $(SONIC_DEP_YANGS)
 
-XFMR_MODELS_LIST = $(BUILD_DIR)/transformer/models_list
+XFMR_BUILD_DIR   = $(BUILD_DIR)/transformer
+XFMR_MODELS_LIST = $(XFMR_BUILD_DIR)/models_list
 
 DEFAULT_TARGETS = $(YGOT_BINDS) $(XFMR_MODELS_LIST)
 ifeq ($(NO_TEST_BINS),)
@@ -78,6 +77,4 @@ $(XFMR_MODELS_LIST): $(TOPDIR)/config/transformer/models_list $(YANG_FILES)
 
 clean:
 	$(RM) $(YGOT_BINDS)
-	$(RM) $(TRANSLIB_PKG)
-	$(RM) -r $(TRANSLIB_TEST_DIR)
-
+	$(RM) -r $(TRANSLIB_TEST_DIR) $(XFMR_BUILD_DIR)

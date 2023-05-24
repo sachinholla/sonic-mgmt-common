@@ -80,7 +80,7 @@ ifdef INCLUDE_TEST_MODELS
 endif
 
 .PHONY: models
-models: transformer-test
+models: transformer-test | $(GO_DEPS)
 	$(MAKE) -C models/yang
 
 models-clean: transformer-test-clean

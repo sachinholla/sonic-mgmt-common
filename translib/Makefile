@@ -29,7 +29,7 @@ YANG_FILES = $(shell find $(YANG_DIR) -name "*.yang" -not -path "*/annotations/*
 YGOT_BINDS = ocbinds/ocbinds.go
 
 SONIC_DEP_YANGS  = $(notdir $(wildcard $(YANG_DIR)/sonic/common/*.yang))
-YGOT_EXCLUDES    = ietf-interfaces sonic-types $(SONIC_DEP_YANGS)
+YGOT_EXCLUDES    = ietf-interfaces sonic-types sonic-common
 
 XFMR_BUILD_DIR   = $(BUILD_DIR)/transformer
 XFMR_MODELS_LIST = $(XFMR_BUILD_DIR)/models_list
